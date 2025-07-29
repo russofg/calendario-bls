@@ -1,46 +1,55 @@
 // Netlify Function: send-whatsapp.js
-// Place this file in /netlify/functions/
+const fetch = (...args) =>
+  import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
-export default async (req, res) => {
-  // Enable CORS
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
-  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Handle preflight OPTIONS request
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
+exports.handler = async (event, context) => {
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: 'Method not allowed' }),
+    };
   }
 
-  // Only allow POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  let body;
+  try {
+    body = JSON.parse(event.body);
+  } catch (err) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Invalid JSON body' }),
+    };
   }
 
-  const { phone, message } = req.body;
+  const { phone, message } = body;
   if (!phone || !message) {
-    return res.status(400).json({ error: 'Missing phone or message' });
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Missing phone or message' }),
+    };
   }
 
-  // Read CallMeBot config from environment variables
   const apiKey = process.env.VITE_CALLMEBOT_API_KEY;
   const baseUrl = process.env.VITE_CALLMEBOT_BASE_URL;
-
-  // Build CallMeBot URL
   const url = `${baseUrl}?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${apiKey}`;
 
   try {
-    const fetch = (...args) =>
-      import('node-fetch').then(({ default: fetch }) => fetch(...args));
     const response = await fetch(url, { method: 'GET' });
     const result = await response.text();
     if (response.ok && result.includes('sent')) {
-      return res.status(200).json({ success: true, result });
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ success: true, result }),
+      };
     } else {
-      return res.status(500).json({ success: false, error: result });
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ success: false, error: result }),
+      };
     }
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ success: false, error: error.message }),
+    };
   }
 };
