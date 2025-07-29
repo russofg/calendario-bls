@@ -169,3 +169,6 @@ lighthouse-report.html
 
 # Local development
 .local/ 
+ # Env files
+ .env
+ .env.*
