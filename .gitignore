@@ -168,7 +168,7 @@ lighthouse-report.json
 lighthouse-report.html
 
 # Local development
-.local/ 
+.local/
  # Env files
  .env
  .env.*
