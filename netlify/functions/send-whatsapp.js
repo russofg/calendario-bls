@@ -35,7 +35,7 @@ exports.handler = async (event, context) => {
   try {
     const response = await fetch(url, { method: 'GET' });
     const result = await response.text();
-    if (response.ok && result.includes('sent')) {
+    if (response.ok && (result.includes('sent') || result.includes('queued'))) {
       return {
         statusCode: 200,
         body: JSON.stringify({ success: true, result }),
