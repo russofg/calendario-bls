@@ -268,19 +268,89 @@ export const metricsManager = {
    * @returns {string} Porcentaje de crecimiento
    */
   calculateGrowth(events) {
-    // Implementación simplificada - comparar con el período anterior
     const currentCount = events.length;
-    // Para una implementación completa, necesitaríamos obtener eventos del período anterior
-    // Por ahora, mostraremos un cálculo básico
-    const previousCount = Math.max(
-      0,
-      currentCount - Math.floor(currentCount * 0.2)
+
+    // Obtener eventos del período anterior para comparación real
+    const previousEvents = this.getEventsInPreviousRange();
+    const previousCount = previousEvents.length;
+
+    console.log(
+      `📊 Growth calculation: Current: ${currentCount}, Previous: ${previousCount}`
     );
 
-    if (previousCount === 0) return currentCount > 0 ? '+100%' : '0%';
+    // Si no hay período anterior, mostrar como crecimiento desde 0
+    if (previousCount === 0) {
+      return currentCount > 0 ? '+100%' : '0%';
+    }
 
+    // Calcular porcentaje de crecimiento
     const growth = ((currentCount - previousCount) / previousCount) * 100;
-    return growth >= 0 ? `+${growth.toFixed(1)}%` : `${growth.toFixed(1)}%`;
+
+    if (growth === 0) {
+      return '0%';
+    }
+
+    return growth > 0 ? `+${growth.toFixed(1)}%` : `${growth.toFixed(1)}%`;
+  },
+
+  /**
+   * Obtiene eventos del período anterior para comparar crecimiento
+   * @returns {Array} Array de eventos del período anterior
+   */
+  getEventsInPreviousRange() {
+    const events = appState.get(APP_STATE_KEYS.EVENTS);
+    if (!events || events.length === 0) {
+      return [];
+    }
+
+    const now = new Date();
+    let currentStartDate, previousStartDate, previousEndDate;
+
+    // Calcular fechas del período anterior basado en el rango actual
+    switch (this.currentRange) {
+      case '7d':
+        currentStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        previousStartDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        previousEndDate = currentStartDate;
+        break;
+      case '30d':
+        currentStartDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        previousStartDate = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+        previousEndDate = currentStartDate;
+        break;
+      case '90d':
+        currentStartDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        previousStartDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+        previousEndDate = currentStartDate;
+        break;
+      case '1y':
+        currentStartDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        previousStartDate = new Date(now.getTime() - 730 * 24 * 60 * 60 * 1000);
+        previousEndDate = currentStartDate;
+        break;
+      default:
+        currentStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        previousStartDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        previousEndDate = currentStartDate;
+    }
+
+    console.log(
+      `📅 Previous period: ${previousStartDate.toISOString()} to ${previousEndDate.toISOString()}`
+    );
+
+    // Filtrar eventos del período anterior
+    const filteredEvents = events.filter(event => {
+      const eventDateString = event.fechaInicio || event.date;
+      if (!eventDateString) {
+        return false;
+      }
+
+      const eventDate = new Date(eventDateString);
+      return eventDate >= previousStartDate && eventDate < previousEndDate;
+    });
+
+    console.log(`📊 Previous period events: ${filteredEvents.length}`);
+    return filteredEvents;
   },
 
   /**
