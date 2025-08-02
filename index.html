@@ -28,6 +28,24 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Script para verificar carga de bibliotecas -->
+    <script>
+      window.addEventListener('load', function () {
+        console.log('🔍 Verificando bibliotecas de exportación...');
+        console.log('jsPDF disponible:', typeof window.jsPDF !== 'undefined');
+        console.log('XLSX disponible:', typeof window.XLSX !== 'undefined');
+        console.log(
+          'html2canvas disponible:',
+          typeof window.html2canvas !== 'undefined'
+        );
+      });
+    </script>
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
@@ -436,6 +454,50 @@
                   <button id="metricsRange1y" class="btn btn-secondary btn-sm">
                     Último año
                   </button>
+                </div>
+              </div>
+
+              <!-- Export Controls -->
+              <div class="mb-6">
+                <div class="bg-gray-50 rounded-lg p-4">
+                  <h3 class="text-sm font-medium text-gray-700 mb-3">
+                    <i data-lucide="download" class="w-4 h-4 inline mr-2"></i>
+                    Exportar Reportes
+                  </h3>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      id="exportPdfReport"
+                      class="btn btn-outline btn-sm"
+                      title="Exportar reporte completo en PDF"
+                    >
+                      <i data-lucide="file-text" class="w-4 h-4 mr-2"></i>
+                      PDF Reporte
+                    </button>
+                    <button
+                      id="exportExcelReport"
+                      class="btn btn-outline btn-sm"
+                      title="Exportar datos en Excel"
+                    >
+                      <i data-lucide="table" class="w-4 h-4 mr-2"></i>
+                      Excel Datos
+                    </button>
+                    <button
+                      id="exportTechnicianCalendar"
+                      class="btn btn-outline btn-sm"
+                      title="Exportar calendario de técnicos en PDF"
+                    >
+                      <i data-lucide="users" class="w-4 h-4 mr-2"></i>
+                      Calendario Técnicos
+                    </button>
+                    <button
+                      id="debugTechniciansBtn"
+                      class="btn btn-outline btn-sm"
+                      title="Debug: Ver información de técnicos y eventos"
+                    >
+                      <i data-lucide="bug" class="w-4 h-4 mr-2"></i>
+                      Debug Técnicos
+                    </button>
+                  </div>
                 </div>
               </div>
 

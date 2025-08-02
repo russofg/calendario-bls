@@ -40,6 +40,22 @@ export const metricsManager = {
     document
       .getElementById('debugMetricsBtn')
       ?.addEventListener('click', () => this.debugData());
+
+    // Botón de debug técnicos
+    document
+      .getElementById('debugTechniciansBtn')
+      ?.addEventListener('click', () => this.debugTechniciansAndEvents());
+
+    // Botones de exportación
+    document
+      .getElementById('exportPdfReport')
+      ?.addEventListener('click', () => this.exportPdfReport());
+    document
+      .getElementById('exportExcelReport')
+      ?.addEventListener('click', () => this.exportExcelReport());
+    document
+      .getElementById('exportTechnicianCalendar')
+      ?.addEventListener('click', () => this.exportTechnicianCalendar());
   },
 
   /**
@@ -231,13 +247,13 @@ export const metricsManager = {
       // Buscar el nombre del técnico
       const topTech = technicians.find(t => t.id === topTechId);
       if (topTech) {
-        return `${topTech.name} (${maxCount} eventos)`;
+        return `${topTech.nombre} (${maxCount} eventos)`;
       }
 
       // Si no encontramos el técnico por ID, intentar buscar por nombre
-      const techByName = technicians.find(t => t.name === topTechId);
+      const techByName = technicians.find(t => t.nombre === topTechId);
       if (techByName) {
-        return `${techByName.name} (${maxCount} eventos)`;
+        return `${techByName.nombre} (${maxCount} eventos)`;
       }
 
       // Fallback: mostrar el ID/nombre con el conteo
@@ -248,12 +264,12 @@ export const metricsManager = {
     const topTechNames = topTechIds.map(techId => {
       const tech = technicians.find(t => t.id === techId);
       if (tech) {
-        return tech.name;
+        return tech.nombre;
       }
 
-      const techByName = technicians.find(t => t.name === techId);
+      const techByName = technicians.find(t => t.nombre === techId);
       if (techByName) {
-        return techByName.name;
+        return techByName.nombre;
       }
 
       return techId;
@@ -447,7 +463,7 @@ export const metricsManager = {
       // Contar cada técnico y obtener su nombre
       eventTechnicians.forEach(techId => {
         const tech = technicians.find(t => t.id === techId);
-        const name = tech ? tech.name : techId;
+        const name = tech ? tech.nombre : techId;
         technicianCount[name] = (technicianCount[name] || 0) + 1;
       });
     });
@@ -562,14 +578,570 @@ export const metricsManager = {
     this.charts = {};
   },
 
+  // ============ FUNCIONES DE EXPORTACIÓN ============
+
+  /**
+   * Verifica que las bibliotecas de exportación estén disponibles
+   */
+  checkExportLibraries() {
+    const libraries = {
+      jsPDF: false,
+      XLSX: false,
+    };
+
+    // Verificar jsPDF
+    if (typeof window.jsPDF !== 'undefined') {
+      libraries.jsPDF = true;
+    } else if (typeof jsPDF !== 'undefined') {
+      libraries.jsPDF = true;
+    } else if (typeof window.jspdf !== 'undefined') {
+      libraries.jsPDF = true;
+    }
+
+    // Verificar XLSX
+    if (typeof window.XLSX !== 'undefined') {
+      libraries.XLSX = true;
+    } else if (typeof XLSX !== 'undefined') {
+      libraries.XLSX = true;
+    }
+
+    console.log('📚 Estado de bibliotecas de exportación:', libraries);
+    return libraries;
+  },
+
+  /**
+   * Exporta un reporte completo en PDF
+   */
+  async exportPdfReport() {
+    try {
+      console.log('📄 Iniciando exportación PDF...');
+
+      // Verificar bibliotecas disponibles
+      const libraries = this.checkExportLibraries();
+      if (!libraries.jsPDF) {
+        alert(
+          'Error: Biblioteca PDF no disponible. Por favor, recarga la página.'
+        );
+        return;
+      }
+
+      // Verificar múltiples formas de acceso a jsPDF
+      let jsPDFClass = null;
+      if (typeof window.jsPDF !== 'undefined') {
+        jsPDFClass = window.jsPDF;
+      } else if (typeof window.jspdf !== 'undefined') {
+        jsPDFClass = window.jspdf.jsPDF;
+      }
+
+      if (!jsPDFClass) {
+        console.error('❌ jsPDF no está disponible después de la verificación');
+        alert('Error: No se pudo acceder a la biblioteca PDF.');
+        return;
+      }
+
+      const events = await this.getEventsInRange();
+      const technicians = appState.get(APP_STATE_KEYS.TECHNICIANS) || [];
+
+      // Crear nueva instancia de jsPDF
+      const doc = new jsPDFClass();
+
+      // Configurar fuente
+      doc.setFont('helvetica', 'normal');
+
+      // Título principal
+      doc.setFontSize(20);
+      doc.text('Reporte de Métricas de Eventos', 20, 30);
+
+      // Información del período
+      doc.setFontSize(12);
+      const rangeText = this.getRangeText(this.currentRange);
+      doc.text(`Período: ${rangeText}`, 20, 45);
+      doc.text(
+        `Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`,
+        20,
+        55
+      );
+
+      // Línea separadora
+      doc.line(20, 65, 190, 65);
+
+      // Métricas resumidas
+      let yPos = 80;
+      doc.setFontSize(16);
+      doc.text('Resumen Ejecutivo', 20, yPos);
+      yPos += 15;
+
+      doc.setFontSize(12);
+      doc.text(`• Total de eventos: ${events.length}`, 25, yPos);
+      yPos += 10;
+
+      const avgDuration = this.calculateAverageDuration(events);
+      doc.text(`• Duración promedio: ${avgDuration}`, 25, yPos);
+      yPos += 10;
+
+      const topTechnician = this.getTopTechnician(events, technicians);
+      doc.text(`• Técnico más activo: ${topTechnician}`, 25, yPos);
+      yPos += 10;
+
+      const growth = this.calculateGrowth(events);
+      doc.text(`• Crecimiento vs período anterior: ${growth}`, 25, yPos);
+      yPos += 20;
+
+      // Detalles de eventos
+      if (events.length > 0) {
+        doc.setFontSize(16);
+        doc.text('Detalle de Eventos', 20, yPos);
+        yPos += 15;
+
+        doc.setFontSize(10);
+
+        events.forEach((event, index) => {
+          if (yPos > 270) {
+            // Nueva página si es necesario
+            doc.addPage();
+            yPos = 30;
+          }
+
+          const eventDate = event.fechaInicio
+            ? new Date(event.fechaInicio).toLocaleDateString('es-ES')
+            : 'Sin fecha';
+          const techName = this.getEventTechniciansNames(event, technicians);
+
+          doc.text(`${index + 1}. ${event.nombre || 'Sin nombre'}`, 25, yPos);
+          yPos += 6;
+          doc.text(`   Fecha: ${eventDate} | Técnico: ${techName}`, 30, yPos);
+          yPos += 6;
+          if (event.cliente) {
+            doc.text(`   Cliente: ${event.cliente}`, 30, yPos);
+            yPos += 6;
+          }
+          yPos += 3;
+        });
+      }
+
+      // Guardar el PDF
+      const fileName = `reporte-metricas-${this.currentRange}-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+      console.log('✅ PDF exportado exitosamente');
+    } catch (error) {
+      console.error('❌ Error exportando PDF:', error);
+      alert('Error al exportar el reporte PDF');
+    }
+  },
+
+  /**
+   * Exporta datos en formato Excel
+   */
+  async exportExcelReport() {
+    try {
+      console.log('📊 Iniciando exportación Excel...');
+
+      // Verificar bibliotecas disponibles
+      const libraries = this.checkExportLibraries();
+      if (!libraries.XLSX) {
+        alert(
+          'Error: Biblioteca Excel no disponible. Por favor, recarga la página.'
+        );
+        return;
+      }
+
+      // Verificar múltiples formas de acceso a XLSX
+      let XLSXLib = null;
+      if (typeof window.XLSX !== 'undefined') {
+        XLSXLib = window.XLSX;
+      }
+
+      if (!XLSXLib) {
+        console.error('❌ XLSX no está disponible después de la verificación');
+        alert('Error: No se pudo acceder a la biblioteca Excel.');
+        return;
+      }
+
+      const events = await this.getEventsInRange();
+      const technicians = appState.get(APP_STATE_KEYS.TECHNICIANS) || [];
+
+      // Preparar datos para Excel
+      const excelData = events.map((event, index) => {
+        const techName = this.getEventTechniciansNames(event, technicians);
+        const startDate = event.fechaInicio
+          ? new Date(event.fechaInicio).toLocaleDateString('es-ES')
+          : '';
+        const endDate = event.fechaFin
+          ? new Date(event.fechaFin).toLocaleDateString('es-ES')
+          : '';
+
+        return {
+          'N°': index + 1,
+          'Nombre del Evento': event.nombre || '',
+          Cliente: event.cliente || '',
+          'Fecha Inicio': startDate,
+          'Fecha Fin': endDate,
+          'Técnico Asignado': techName,
+          Estado: event.estado || 'Activo',
+          Notas: event.notas || '',
+        };
+      });
+
+      // Agregar hoja de resumen
+      const summaryData = [
+        ['RESUMEN DE MÉTRICAS', ''],
+        ['Período', this.getRangeText(this.currentRange)],
+        ['Total de Eventos', events.length],
+        ['Duración Promedio', this.calculateAverageDuration(events)],
+        ['Técnico Más Activo', this.getTopTechnician(events, technicians)],
+        ['Crecimiento', this.calculateGrowth(events)],
+        ['Fecha de Generación', new Date().toLocaleDateString('es-ES')],
+        ['', ''],
+      ];
+
+      // Crear libro de trabajo
+      const workbook = XLSXLib.utils.book_new();
+
+      // Hoja de resumen
+      const summaryWorksheet = XLSXLib.utils.aoa_to_sheet(summaryData);
+      XLSXLib.utils.book_append_sheet(workbook, summaryWorksheet, 'Resumen');
+
+      // Hoja de eventos
+      const eventsWorksheet = XLSXLib.utils.json_to_sheet(excelData);
+      XLSXLib.utils.book_append_sheet(workbook, eventsWorksheet, 'Eventos');
+
+      // Hoja de técnicos (si hay datos)
+      if (technicians.length > 0) {
+        const techData = technicians.map(tech => ({
+          ID: tech.id,
+          Nombre: tech.nombre,
+          Email: tech.email || '',
+          Teléfono: tech.phone || '',
+          Especialidad: tech.specialty || '',
+        }));
+
+        const techWorksheet = XLSXLib.utils.json_to_sheet(techData);
+        XLSXLib.utils.book_append_sheet(workbook, techWorksheet, 'Técnicos');
+      }
+
+      // Guardar archivo
+      const fileName = `datos-eventos-${this.currentRange}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSXLib.writeFile(workbook, fileName);
+
+      console.log('✅ Excel exportado exitosamente');
+    } catch (error) {
+      console.error('❌ Error exportando Excel:', error);
+      alert('Error al exportar los datos en Excel');
+    }
+  },
+
+  /**
+   * Exporta calendario de técnicos en PDF
+   */
+  async exportTechnicianCalendar() {
+    try {
+      console.log('👥 Iniciando exportación calendario de técnicos...');
+
+      // Verificar bibliotecas disponibles
+      const libraries = this.checkExportLibraries();
+      if (!libraries.jsPDF) {
+        alert(
+          'Error: Biblioteca PDF no disponible. Por favor, recarga la página.'
+        );
+        return;
+      }
+
+      // Verificar múltiples formas de acceso a jsPDF
+      let jsPDFClass = null;
+      if (typeof window.jsPDF !== 'undefined') {
+        jsPDFClass = window.jsPDF;
+      } else if (typeof window.jspdf !== 'undefined') {
+        jsPDFClass = window.jspdf.jsPDF;
+      }
+
+      if (!jsPDFClass) {
+        console.error('❌ jsPDF no está disponible después de la verificación');
+        alert('Error: No se pudo acceder a la biblioteca PDF.');
+        return;
+      }
+
+      const events = await this.getEventsInRange();
+      const technicians = appState.get(APP_STATE_KEYS.TECHNICIANS) || [];
+
+      if (technicians.length === 0) {
+        alert('No hay técnicos registrados para generar el calendario');
+        return;
+      }
+
+      // Crear nueva instancia de jsPDF
+      const doc = new jsPDFClass();
+
+      // Título principal
+      doc.setFontSize(18);
+      doc.text('Calendario de Técnicos', 20, 30);
+
+      // Información del período
+      doc.setFontSize(12);
+      const rangeText = this.getRangeText(this.currentRange);
+      doc.text(`Período: ${rangeText}`, 20, 45);
+      doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 20, 55);
+
+      // Línea separadora
+      doc.line(20, 65, 190, 65);
+
+      let yPos = 80;
+
+      // Para cada técnico, mostrar sus eventos
+      technicians.forEach(technician => {
+        // Validar que el técnico tenga datos válidos
+        if (
+          !technician ||
+          !technician.nombre ||
+          technician.nombre === 'undefined'
+        ) {
+          return; // Saltar técnicos inválidos
+        }
+
+        // Filtrar eventos de este técnico usando lógica mejorada
+        const techEvents = events.filter(event => {
+          // Verificar campo 'technician' (un solo técnico)
+          if (event.technician && event.technician !== 'Sin asignar') {
+            if (
+              event.technician === technician.id ||
+              event.technician === technician.nombre
+            ) {
+              return true;
+            }
+          }
+
+          // Verificar campo 'personal' (array de técnicos)
+          if (event.personal && Array.isArray(event.personal)) {
+            return event.personal.some(
+              techId => techId === technician.id || techId === technician.nombre
+            );
+          }
+
+          return false;
+        });
+
+        // Eliminar duplicados basándose en el ID del evento
+        const uniqueTechEvents = techEvents.filter(
+          (event, index, self) =>
+            index ===
+            self.findIndex(
+              e =>
+                e.id === event.id ||
+                (e.nombre === event.nombre &&
+                  e.fechaInicio === event.fechaInicio)
+            )
+        );
+
+        if (yPos > 250) {
+          // Nueva página si es necesario
+          doc.addPage();
+          yPos = 30;
+        }
+
+        // Nombre del técnico
+        doc.setFontSize(14);
+        doc.text(
+          `${technician.nombre} (${uniqueTechEvents.length} eventos)`,
+          20,
+          yPos
+        );
+        yPos += 15;
+
+        if (uniqueTechEvents.length === 0) {
+          doc.setFontSize(10);
+          doc.text('   Sin eventos asignados en este período', 25, yPos);
+          yPos += 15;
+        } else {
+          doc.setFontSize(10);
+
+          uniqueTechEvents.forEach((event, eventIndex) => {
+            if (yPos > 270) {
+              // Nueva página si es necesario
+              doc.addPage();
+              yPos = 30;
+            }
+
+            const eventDate = event.fechaInicio
+              ? new Date(event.fechaInicio).toLocaleDateString('es-ES')
+              : 'Sin fecha';
+            const endDate = event.fechaFin
+              ? new Date(event.fechaFin).toLocaleDateString('es-ES')
+              : '';
+
+            doc.text(
+              `   ${eventIndex + 1}. ${event.nombre || 'Sin nombre'}`,
+              25,
+              yPos
+            );
+            yPos += 6;
+
+            if (endDate && endDate !== eventDate) {
+              doc.text(`      ${eventDate} → ${endDate}`, 30, yPos);
+            } else {
+              doc.text(`      ${eventDate}`, 30, yPos);
+            }
+            yPos += 6;
+
+            if (event.cliente) {
+              doc.text(`      Cliente: ${event.cliente}`, 30, yPos);
+              yPos += 6;
+            }
+            yPos += 3;
+          });
+        }
+
+        yPos += 10;
+      });
+
+      // Guardar el PDF
+      const fileName = `calendario-tecnicos-${this.currentRange}-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+      console.log('✅ Calendario de técnicos exportado exitosamente');
+    } catch (error) {
+      console.error('❌ Error exportando calendario de técnicos:', error);
+      alert('Error al exportar el calendario de técnicos');
+    }
+  },
+
+  // ============ FUNCIONES AUXILIARES PARA EXPORTACIÓN ============
+
+  /**
+   * Obtiene el texto del rango de fechas
+   * @param {string} range - Rango de fechas
+   * @returns {string} Texto descriptivo del rango
+   */
+  getRangeText(range) {
+    switch (range) {
+      case '7d':
+        return 'Últimos 7 días';
+      case '30d':
+        return 'Últimos 30 días';
+      case '90d':
+        return 'Últimos 3 meses';
+      case '1y':
+        return 'Último año';
+      default:
+        return 'Período personalizado';
+    }
+  },
+
+  /**
+   * Obtiene el nombre de un técnico por ID, considerando múltiples campos
+   * @param {Object} event - Evento del cual obtener técnicos
+   * @param {Array} technicians - Array de técnicos
+   * @returns {string} Nombre(s) del técnico(s) asignado(s)
+   */
+  getEventTechniciansNames(event, technicians) {
+    const assignedTechnicians = [];
+
+    // Verificar campo 'technician' (un solo técnico)
+    if (event.technician && event.technician !== 'Sin asignar') {
+      const tech = technicians.find(
+        t => t.id === event.technician || t.nombre === event.technician
+      );
+      if (tech) {
+        assignedTechnicians.push(tech.nombre);
+      } else {
+        assignedTechnicians.push(event.technician);
+      }
+    }
+
+    // Verificar campo 'personal' (array de técnicos)
+    if (event.personal && Array.isArray(event.personal)) {
+      event.personal.forEach(techId => {
+        if (techId && techId !== 'Sin asignar') {
+          const tech = technicians.find(
+            t => t.id === techId || t.nombre === techId
+          );
+          if (tech) {
+            if (!assignedTechnicians.includes(tech.nombre)) {
+              assignedTechnicians.push(tech.nombre);
+            }
+          } else {
+            if (!assignedTechnicians.includes(techId)) {
+              assignedTechnicians.push(techId);
+            }
+          }
+        }
+      });
+    }
+
+    return assignedTechnicians.length > 0
+      ? assignedTechnicians.join(', ')
+      : 'Sin asignar';
+  },
+
+  /**
+   * Obtiene el nombre de un técnico por ID (método simplificado para compatibilidad)
+   * @param {string} technicianId - ID del técnico
+   * @param {Array} technicians - Array de técnicos
+   * @returns {string} Nombre del técnico
+   */
+  getTechnicianName(technicianId, technicians) {
+    if (!technicianId || technicianId === 'Sin asignar') {
+      return 'Sin asignar';
+    }
+
+    const tech = technicians.find(t => t.id === technicianId);
+    if (tech) {
+      return tech.nombre;
+    }
+
+    const techByName = technicians.find(t => t.nombre === technicianId);
+    if (techByName) {
+      return techByName.nombre;
+    }
+
+    return technicianId; // Fallback al ID/nombre original
+  },
+
   /**
    * Método de debug para verificar datos
    */
 
   /**
+   * Debug: Muestra información detallada sobre técnicos y eventos
+   */
+  debugTechniciansAndEvents() {
+    const events = appState.get(APP_STATE_KEYS.EVENTS) || [];
+    const technicians = appState.get(APP_STATE_KEYS.TECHNICIANS) || [];
+
+    console.log('🔍 DEBUG TÉCNICOS Y EVENTOS:');
+    console.log(`📊 Total eventos: ${events.length}`);
+    console.log(`👥 Total técnicos: ${technicians.length}`);
+
+    console.log('\n👥 TÉCNICOS DISPONIBLES:');
+    technicians.forEach((tech, index) => {
+      console.log(`${index + 1}. ID: "${tech.id}" | Nombre: "${tech.nombre}"`);
+    });
+
+    console.log('\n📅 EVENTOS Y SUS TÉCNICOS:');
+    events.forEach((event, index) => {
+      console.log(`\n📅 Evento ${index + 1}: ${event.nombre}`);
+      console.log(
+        `   - technician: "${event.technician}" (tipo: ${typeof event.technician})`
+      );
+      console.log(
+        `   - personal: ${JSON.stringify(event.personal)} (tipo: ${typeof event.personal})`
+      );
+
+      // Mostrar técnicos detectados
+      const detectedTechs = this.getEventTechniciansNames(event, technicians);
+      console.log(`   - Técnicos detectados: "${detectedTechs}"`);
+    });
+
+    return { events, technicians };
+  },
+
+  /**
    * Muestra la sección de métricas
    */
   show() {
+    // Verificar bibliotecas de exportación
+    console.log('📊 Mostrando sección de métricas...');
+    this.checkExportLibraries();
+
     // Verificar si necesitamos cargar datos
     const events = appState.get(APP_STATE_KEYS.EVENTS);
     const technicians = appState.get(APP_STATE_KEYS.TECHNICIANS);
