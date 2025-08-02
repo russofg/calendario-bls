@@ -18,6 +18,18 @@ export class WhatsAppNotificationManager {
    */
   async sendWhatsAppMessage(phone, message) {
     try {
+      // Check if running in development (localhost) or disabled by config
+      const isLocalDevelopment =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.includes('localhost');
+
+      if (isLocalDevelopment && WHATSAPP_CONFIG.DISABLE_IN_DEVELOPMENT) {
+        console.log('🔧 WhatsApp notifications disabled in development mode');
+        console.log(`📱 Would send to ${phone}: ${message}`);
+        return true; // Return true to simulate success
+      }
+
       // Validate phone number
       const validation = PhoneValidator.validatePhone(phone);
       if (!validation.isValid) {
@@ -52,13 +64,12 @@ export class WhatsAppNotificationManager {
           validation.formatted
         );
         return true;
-      } else {
-        console.error(
-          '❌ Failed to send WhatsApp message:',
-          result.error || result
-        );
-        return false;
       }
+      console.error(
+        '❌ Failed to send WhatsApp message:',
+        result.error || result
+      );
+      return false;
     } catch (error) {
       console.error('❌ Error sending WhatsApp message:', error);
       return false;

@@ -12,6 +12,7 @@ export const APP_STATE_KEYS = {
 export const VIEWS = {
   HOME: 'home',
   CALENDAR: 'calendar',
+  TECHNICIANS: 'technicians',
 };
 
 export const EVENT_STATUS = {
@@ -45,6 +46,8 @@ export const WHATSAPP_CONFIG = {
   // You need to get your API key from https://www.callmebot.com/blog/free-api-whatsapp-messages/
   API_KEY: import.meta.env.VITE_CALLMEBOT_API_KEY,
   TIMEZONE: 'America/Argentina/Buenos_Aires',
+  // Disable notifications in development
+  DISABLE_IN_DEVELOPMENT: true,
   NOTIFICATION_TIMES: {
     BEFORE_48H: 48, // hours    VITE_CALLMEBOT_API_KEY=tu_api_key_real
     BEFORE_24H: 24, // hours

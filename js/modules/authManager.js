@@ -60,7 +60,6 @@ export class AuthManager {
         photoURL: user.photoURL,
       };
 
-      console.log('🔄 Saving complete user to AppState:', completeUser.uid);
       appState.setCurrentUser(completeUser);
 
       NotificationManager.showSuccess('Sesión iniciada exitosamente');
@@ -270,7 +269,6 @@ export class AuthManager {
     if (!currentUser && this.auth) {
       const firebaseUser = this.auth.currentUser;
       if (firebaseUser) {
-        console.log('🔄 Getting user from Firebase Auth:', firebaseUser.uid);
         appState.setCurrentUser(firebaseUser);
         currentUser = firebaseUser;
       }

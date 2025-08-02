@@ -17,7 +17,6 @@ export class TechnicianManager {
     this.db = db;
     this.appState = appState;
     this.isInitialized = true;
-    console.log('✅ TechnicianManager initialized with Firebase database');
   }
 
   // Check if manager is initialized
@@ -131,6 +130,10 @@ export class TechnicianManager {
         updatedAt: new Date(),
       };
 
+      // Check if name is being changed
+      const isNameChanged =
+        updates.nombre && updates.nombre !== technician.nombre;
+
       await this.db
         .collection(COLLECTIONS.TECHNICIANS)
         .doc(technicianId)
@@ -138,6 +141,14 @@ export class TechnicianManager {
 
       // Update in state
       this.appState.updateTechnician(technicianId, technicianToUpdate);
+
+      // If name changed, update all events that reference this technician
+      if (isNameChanged) {
+        await this.updateTechnicianReferencesInEvents(
+          technician.nombre,
+          updates.nombre
+        );
+      }
 
       NotificationManager.showSuccess('Técnico actualizado correctamente');
 
@@ -151,6 +162,43 @@ export class TechnicianManager {
     } catch (error) {
       console.error('Error updating technician:', error);
       NotificationManager.showError('Error al actualizar el técnico');
+      throw error;
+    }
+  }
+
+  // Update technician references in all events
+  async updateTechnicianReferencesInEvents(oldName, newName) {
+    try {
+      const events = this.appState.get(APP_STATE_KEYS.EVENTS);
+      const eventsToUpdate = events.filter(
+        event => event.personal && event.personal.includes(oldName)
+      );
+
+      // Update each event in Firebase
+      for (const event of eventsToUpdate) {
+        const updatedPersonal = event.personal.map(technicianName =>
+          technicianName === oldName ? newName : technicianName
+        );
+
+        await this.db
+          .collection(COLLECTIONS.EVENTS)
+          .doc(event.id)
+          .update({ personal: updatedPersonal });
+
+        // Update in app state
+        this.appState.updateEvent(event.id, { personal: updatedPersonal });
+      }
+
+      if (eventsToUpdate.length > 0) {
+        console.log(
+          `Updated technician reference from "${oldName}" to "${newName}" in ${eventsToUpdate.length} event(s)`
+        );
+      }
+    } catch (error) {
+      console.error('Error updating technician references in events:', error);
+      NotificationManager.showError(
+        'Error al actualizar las referencias del técnico en los eventos'
+      );
       throw error;
     }
   }

@@ -18,7 +18,6 @@ export class EventManager {
     this.appState = appState;
     this.whatsappManager = new WhatsAppNotificationManager(db);
     this.isInitialized = true;
-    console.log('✅ EventManager initialized with Firebase database');
   }
 
   // Check if manager is initialized
@@ -42,9 +41,15 @@ export class EventManager {
         ...doc.data(),
       }));
 
-      this.appState.set(APP_STATE_KEYS.EVENTS, events);
-      console.log(`✅ Loaded ${events.length} events`);
-      return events;
+      // Ordenar eventos por fecha de inicio (más recientes primero)
+      const sortedEvents = events.sort((a, b) => {
+        const dateA = new Date(a.fechaInicio);
+        const dateB = new Date(b.fechaInicio);
+        return dateA - dateB; // Orden ascendente (próximos eventos primero)
+      });
+
+      this.appState.set(APP_STATE_KEYS.EVENTS, sortedEvents);
+      return sortedEvents;
     } catch (error) {
       console.error('Error loading events:', error);
       NotificationManager.showError('Error al cargar los eventos');
@@ -69,15 +74,23 @@ export class EventManager {
         updatedAt: new Date(),
       };
 
-      // Update local state
+      // Update local state - mantener orden por fecha
       const currentEvents = this.appState.get(APP_STATE_KEYS.EVENTS);
-      this.appState.set(APP_STATE_KEYS.EVENTS, [...currentEvents, newEvent]);
+      const allEvents = [...currentEvents, newEvent];
+
+      // Ordenar por fecha de inicio
+      const sortedEvents = allEvents.sort((a, b) => {
+        const dateA = new Date(a.fechaInicio);
+        const dateB = new Date(b.fechaInicio);
+        return dateA - dateB;
+      });
+
+      this.appState.set(APP_STATE_KEYS.EVENTS, sortedEvents);
 
       // Send WhatsApp notification
       try {
         const notificationResult =
           await this.whatsappManager.sendEventCreatedNotification(newEvent);
-        console.log('📱 WhatsApp notification result:', notificationResult);
 
         // Schedule reminders
         await this.whatsappManager.scheduleEventReminders(newEvent);
@@ -109,22 +122,29 @@ export class EventManager {
           updatedAt: new Date(),
         });
 
-      // Update local state
+      // Update local state - mantener orden por fecha
       const currentEvents = this.appState.get(APP_STATE_KEYS.EVENTS);
       const updatedEvents = currentEvents.map(event =>
         event.id === eventId
           ? { ...event, ...updates, updatedAt: new Date() }
           : event
       );
-      this.appState.set(APP_STATE_KEYS.EVENTS, updatedEvents);
 
-      const updatedEvent = updatedEvents.find(event => event.id === eventId);
+      // Ordenar por fecha de inicio
+      const sortedEvents = updatedEvents.sort((a, b) => {
+        const dateA = new Date(a.fechaInicio);
+        const dateB = new Date(b.fechaInicio);
+        return dateA - dateB;
+      });
+
+      this.appState.set(APP_STATE_KEYS.EVENTS, sortedEvents);
+
+      const updatedEvent = sortedEvents.find(event => event.id === eventId);
 
       // Send WhatsApp notification
       try {
         const notificationResult =
           await this.whatsappManager.sendEventUpdatedNotification(updatedEvent);
-        console.log('📱 WhatsApp notification result:', notificationResult);
 
         // Update reminders if date changed
         if (updates.fechaInicio) {
@@ -171,7 +191,6 @@ export class EventManager {
             await this.whatsappManager.sendEventDeletedNotification(
               eventToDelete
             );
-          console.log('📱 WhatsApp notification result:', notificationResult);
         } catch (notificationError) {
           console.error(
             '❌ Error sending WhatsApp notification:',

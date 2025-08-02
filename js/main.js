@@ -5,6 +5,7 @@ import { eventManager } from './modules/eventManager.js';
 import { technicianManager } from './modules/technicianManager.js';
 import { calendarManager } from './modules/calendarManager.js';
 import { uiManager } from './modules/uiManager.js';
+import { metricsManager } from './modules/metricsManager.js';
 import { NotificationManager } from './utils/notifications.js';
 import { Helpers } from './utils/helpers.js';
 
@@ -18,14 +19,13 @@ class EventProApp {
       technicianManager,
       calendarManager,
       uiManager,
+      metricsManager,
     };
   }
 
   // Initialize the application
   async initialize() {
     try {
-      console.log('🚀 Initializing EventPro Application...');
-
       // Show loading screen
       uiManager.showLoading();
 
@@ -46,8 +46,6 @@ class EventProApp {
 
       // Mark as initialized
       this.isInitialized = true;
-
-      console.log('✅ EventPro Application initialized successfully');
     } catch (error) {
       console.error('❌ Error initializing EventPro Application:', error);
       NotificationManager.showError('Error al inicializar la aplicación');
@@ -84,7 +82,8 @@ class EventProApp {
         // Initialize TechnicianManager
         technicianManager.initialize(firebase.db, appState);
 
-        console.log('✅ Managers initialized with Firebase database');
+        // Initialize MetricsManager
+        metricsManager.init();
       } else {
         console.warn(
           '⚠️ Firebase not available yet, managers will be initialized later'
@@ -135,11 +134,10 @@ class EventProApp {
 
     // Listen to view changes
     appState.subscribe('currentView', view => {
-      if (view === 'calendar') {
-        uiManager.showCalendar();
-      } else {
-        uiManager.hideCalendar();
-      }
+      // This listener handles view-specific logic that's not handled by the UI manager
+      // The UI manager methods (goHome, showCalendar, showTechniciansSection) handle
+      // the actual showing/hiding of sections
+      console.log('View changed to:', view);
     });
   }
 
@@ -560,6 +558,11 @@ class EventProApp {
     // Load technicians
     this.loadEventTechnicians(event, elements.detallePersonalContainer, true);
 
+    // Re-initialize Lucide icons for dynamically added content
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
     // Reset form to read-only
     uiManager.resetEventDetailForm();
 
@@ -607,50 +610,347 @@ class EventProApp {
 
     const technicians = technicianManager.getAllTechnicians();
 
-    for (const technician of technicians) {
-      const isSelected =
-        event.personal && event.personal.includes(technician.nombre);
+    if (readOnly) {
+      // Modo solo lectura: mostrar solo técnicos asignados
+      const assignedTechnicians = technicians.filter(
+        technician =>
+          event.personal && event.personal.includes(technician.nombre)
+      );
 
-      const checkbox = document.createElement('div');
-      checkbox.className = isSelected
-        ? 'checkbox-item selected'
-        : 'checkbox-item';
-      checkbox.innerHTML = `
-        <input type="checkbox" value="${technician.nombre}"
-               ${isSelected ? 'checked' : ''}
-               ${readOnly ? 'disabled' : ''}>
-        <span>${technician.nombre}</span>
-      `;
+      if (assignedTechnicians.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'text-gray-500 text-sm italic py-2';
+        emptyMessage.textContent = 'No hay técnicos asignados a este evento';
+        container.appendChild(emptyMessage);
+      } else {
+        assignedTechnicians.forEach(technician => {
+          const technicianItem = document.createElement('div');
+          technicianItem.className = 'technician-assigned-item';
+          technicianItem.innerHTML = `
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+            <span>${technician.nombre}</span>
+          `;
+          container.appendChild(technicianItem);
+        });
+      }
 
-      container.appendChild(checkbox);
-    }
+      // Botón para editar técnicos
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'btn btn-sm btn-secondary mt-3 w-full';
+      editButton.innerHTML =
+        '<i data-lucide="edit" class="w-4 h-4 mr-2"></i>Editar Técnicos Asignados';
+      editButton.onclick = () => {
+        // Cambiar a modo edición
+        this.loadEventTechnicians(event, container, false);
+      };
+      container.appendChild(editButton);
+    } else {
+      // Modo edición: mostrar todos los técnicos con checkboxes
+      for (const technician of technicians) {
+        const isSelected =
+          event.personal && event.personal.includes(technician.nombre);
 
-    // Add new technician button (only in edit mode)
-    if (!readOnly) {
+        const checkbox = document.createElement('div');
+        checkbox.className = isSelected
+          ? 'checkbox-item selected'
+          : 'checkbox-item';
+        checkbox.innerHTML = `
+          <input type="checkbox" value="${technician.nombre}"
+                 ${isSelected ? 'checked' : ''}>
+          <span>${technician.nombre}</span>
+        `;
+
+        container.appendChild(checkbox);
+      }
+
+      // Botón para agregar nuevo técnico
       const addButton = document.createElement('button');
       addButton.type = 'button';
-      addButton.className = 'btn btn-sm btn-secondary mt-2';
+      addButton.className = 'btn btn-sm btn-secondary w-full mb-2';
       addButton.innerHTML =
-        '<i data-lucide="plus" class="w-4 h-4 mr-2"></i>Agregar técnico';
+        '<i data-lucide="plus" class="w-4 h-4 mr-2"></i>Agregar Técnico';
       addButton.onclick = () => {
-        // Show prompt to enter technician name
-        const nombre = prompt('Ingresa el nombre del técnico:');
-        if (nombre && nombre.trim()) {
-          technicianManager.createTechnician({ nombre: nombre.trim() });
-        }
+        // Use the same modal as in technician management
+        uiManager.openAddTechnicianModal();
       };
-      container.appendChild(addButton);
+
+      // Botón para guardar cambios
+      const saveButton = document.createElement('button');
+      saveButton.type = 'button';
+      saveButton.className = 'btn btn-sm btn-primary w-full';
+      saveButton.innerHTML =
+        '<i data-lucide="save" class="w-4 h-4 mr-2"></i>Guardar Cambios';
+      saveButton.onclick = () => {
+        // Guardar los cambios de técnicos y volver al modo de solo lectura
+        this.saveTechnicianChanges(event, container);
+      };
+
+      const buttonContainer = document.createElement('div');
+      buttonContainer.className = 'flex flex-col gap-2 mt-3';
+      buttonContainer.appendChild(addButton);
+      buttonContainer.appendChild(saveButton);
+      container.appendChild(buttonContainer);
     }
+  }
+
+  // Guardar cambios de técnicos y volver al modo de solo lectura
+  saveTechnicianChanges(event, container) {
+    if (!container) return;
+
+    // Obtener técnicos seleccionados
+    const selectedTechnicians = Array.from(
+      container.querySelectorAll('input[type="checkbox"]:checked')
+    ).map(cb => cb.value);
+
+    // Actualizar el evento con los nuevos técnicos
+    const updatedEvent = { ...event, personal: selectedTechnicians };
+
+    // Actualizar en Firebase
+    eventManager.updateEvent(event.id, { personal: selectedTechnicians });
+
+    // Volver al modo de solo lectura
+    this.loadEventTechnicians(updatedEvent, container, true);
+
+    // Re-initialize Lucide icons for dynamically added content
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
+    // Actualizar la referencia del evento actual
+    this.currentEventDetail = updatedEvent;
+  }
+
+  // Mostrar modal de gestión de técnicos
+  showTechnicianManagementModal() {
+    const technicians = technicianManager.getAllTechnicians();
+    const events = appState.get('events');
+
+    // Crear modal dinámicamente
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className =
+      'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+    modalOverlay.id = 'technicianManagementModal';
+
+    const modalContent = document.createElement('div');
+    modalContent.className =
+      'bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in';
+
+    modalContent.innerHTML = `
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-bold text-gray-900">Gestionar Técnicos</h2>
+          <button id="closeTechnicianModal" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <i data-lucide="x" class="w-5 h-5 text-gray-600"></i>
+          </button>
+        </div>
+
+        <div class="mb-4">
+          <p class="text-gray-600 text-sm mb-4">
+            <i data-lucide="info" class="w-4 h-4 inline mr-1"></i>
+            Solo puedes eliminar técnicos que no estén asignados a ningún evento.
+          </p>
+        </div>
+
+        <div id="techniciansList" class="space-y-3">
+          <!-- Técnicos se cargarán aquí -->
+        </div>
+
+        <div class="flex items-center justify-end space-x-3 mt-8 pt-6 border-t border-gray-200">
+          <button id="cancelTechnicianManagement" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    `;
+
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+
+    // Poblar lista de técnicos
+    this.populateTechniciansList(technicians, events);
+
+    // Event listeners
+    document.getElementById('closeTechnicianModal').onclick = () => {
+      this.closeTechnicianManagementModal();
+    };
+
+    document.getElementById('cancelTechnicianManagement').onclick = () => {
+      this.closeTechnicianManagementModal();
+    };
+
+    // Cerrar al hacer clic fuera del modal
+    modalOverlay.onclick = e => {
+      if (e.target === modalOverlay) {
+        this.closeTechnicianManagementModal();
+      }
+    };
+
+    // Re-initialize Lucide icons
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  }
+
+  // Poblar lista de técnicos con opciones de eliminar
+  populateTechniciansList(technicians, events) {
+    const container = document.getElementById('techniciansList');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (technicians.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8 text-gray-500">
+          <i data-lucide="users" class="w-12 h-12 mx-auto mb-2 text-gray-300"></i>
+          <p>No hay técnicos registrados</p>
+        </div>
+      `;
+      return;
+    }
+
+    technicians.forEach(technician => {
+      // Verificar si el técnico está asignado a algún evento
+      const assignedEvents = events.filter(
+        event => event.personal && event.personal.includes(technician.nombre)
+      );
+
+      const isAssigned = assignedEvents.length > 0;
+
+      const technicianItem = document.createElement('div');
+      technicianItem.className = `p-4 border border-gray-200 rounded-lg ${isAssigned ? 'bg-yellow-50 border-yellow-200' : 'bg-white'}`;
+
+      technicianItem.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <i data-lucide="user" class="w-5 h-5 text-gray-600"></i>
+            <div>
+              <h3 class="font-medium text-gray-900">${technician.nombre}</h3>
+              ${
+                isAssigned
+                  ? `<p class="text-sm text-yellow-700">
+                  <i data-lucide="alert-triangle" class="w-3 h-3 inline mr-1"></i>
+                  Asignado a ${assignedEvents.length} evento(s): ${assignedEvents.map(e => e.nombre).join(', ')}
+                </p>`
+                  : `<p class="text-sm text-gray-500">
+                  <i data-lucide="check-circle" class="w-3 h-3 inline mr-1"></i>
+                  Disponible para eliminar
+                </p>`
+              }
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            ${
+              !isAssigned
+                ? `<button
+                class="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                onclick="window.EventProApp.deleteTechnician('${technician.id}', '${technician.nombre}')"
+              >
+                <i data-lucide="trash-2" class="w-3 h-3 inline mr-1"></i>
+                Eliminar
+              </button>`
+                : `<span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-lg">
+                <i data-lucide="lock" class="w-3 h-3 inline mr-1"></i>
+                Protegido
+              </span>`
+            }
+          </div>
+        </div>
+      `;
+
+      container.appendChild(technicianItem);
+    });
+
+    // Re-initialize Lucide icons
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  }
+
+  // Cerrar modal de gestión de técnicos
+  closeTechnicianManagementModal() {
+    const modal = document.getElementById('technicianManagementModal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+
+  // Eliminar técnico con confirmación
+  async deleteTechnician(technicianId, technicianName) {
+    const confirmation = await this.showConfirmationDialog(
+      `¿Estás seguro de que quieres eliminar al técnico "${technicianName}"?`,
+      'Esta acción no se puede deshacer.',
+      'Eliminar',
+      'Cancelar'
+    );
+
+    if (confirmation) {
+      try {
+        await technicianManager.deleteTechnician(technicianId);
+
+        // Refrescar la lista
+        const technicians = technicianManager.getAllTechnicians();
+        const events = appState.get('events');
+        this.populateTechniciansList(technicians, events);
+
+        // Si hay un modal de evento abierto, actualizar la lista de técnicos
+        const eventDetailModal = document.getElementById('eventDetailModal');
+        const createEventModal = document.getElementById('createEventModal');
+
+        if (eventDetailModal && eventDetailModal.style.display === 'flex') {
+          const container = document.getElementById('detallePersonalContainer');
+          if (container && this.currentEventDetail) {
+            this.loadEventTechnicians(this.currentEventDetail, container, true);
+          }
+        }
+
+        if (createEventModal && createEventModal.style.display === 'flex') {
+          uiManager.loadCreateEventTechnicians();
+        }
+      } catch (error) {
+        console.error('Error deleting technician:', error);
+      }
+    }
+  }
+
+  // Mostrar diálogo de confirmación personalizado
+  showConfirmationDialog(
+    title,
+    message,
+    confirmText = 'Confirmar',
+    cancelText = 'Cancelar'
+  ) {
+    return new Promise(resolve => {
+      // Usar SweetAlert2 si está disponible, sino usar confirm nativo
+      if (window.Swal) {
+        window.Swal.fire({
+          title: title,
+          text: message,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc2626',
+          cancelButtonColor: '#6b7280',
+          confirmButtonText: confirmText,
+          cancelButtonText: cancelText,
+          reverseButtons: true,
+        }).then(result => {
+          resolve(result.isConfirmed);
+        });
+      } else {
+        // Fallback a confirm nativo
+        const result = confirm(`${title}\n\n${message}`);
+        resolve(result);
+      }
+    });
   }
 
   handleCalendarDateClick(date) {
     // Handle calendar date click - could open create event modal with pre-filled date
-    console.log('Calendar date clicked:', date);
   }
 
   handleCalendarDateSelection(startDate, endDate) {
     // Handle calendar date selection - could filter events or create new event
-    console.log('Calendar date selection:', startDate, 'to', endDate);
   }
 
   // Public API
@@ -680,5 +980,5 @@ document.addEventListener('DOMContentLoaded', () => {
   eventProApp.initialize();
 });
 
-// Export for global access (if needed)
+// Export for global access (needed for dynamic modal buttons)
 window.EventProApp = eventProApp;

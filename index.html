@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es" class="h-full">
   <head>
     <meta charset="UTF-8" />
@@ -24,6 +24,9 @@
       href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css"
       rel="stylesheet"
     />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -60,52 +63,52 @@
           extend: {
             colors: {
               primary: {
-                50: "#eff6ff",
-                100: "#dbeafe",
-                200: "#bfdbfe",
-                300: "#93c5fd",
-                400: "#60a5fa",
-                500: "#3b82f6",
-                600: "#2563eb",
-                700: "#1d4ed8",
-                800: "#1e40af",
-                900: "#1e3a8a",
+                50: '#eff6ff',
+                100: '#dbeafe',
+                200: '#bfdbfe',
+                300: '#93c5fd',
+                400: '#60a5fa',
+                500: '#3b82f6',
+                600: '#2563eb',
+                700: '#1d4ed8',
+                800: '#1e40af',
+                900: '#1e3a8a',
               },
               gray: {
-                50: "#f9fafb",
-                100: "#f3f4f6",
-                200: "#e5e7eb",
-                300: "#d1d5db",
-                400: "#9ca3af",
-                500: "#6b7280",
-                600: "#4b5563",
-                700: "#374151",
-                800: "#1f2937",
-                900: "#111827",
+                50: '#f9fafb',
+                100: '#f3f4f6',
+                200: '#e5e7eb',
+                300: '#d1d5db',
+                400: '#9ca3af',
+                500: '#6b7280',
+                600: '#4b5563',
+                700: '#374151',
+                800: '#1f2937',
+                900: '#111827',
               },
             },
             animation: {
-              "fade-in": "fadeIn 0.5s ease-in-out",
-              "slide-up": "slideUp 0.3s ease-out",
-              "slide-down": "slideDown 0.3s ease-out",
-              "scale-in": "scaleIn 0.2s ease-out",
+              'fade-in': 'fadeIn 0.5s ease-in-out',
+              'slide-up': 'slideUp 0.3s ease-out',
+              'slide-down': 'slideDown 0.3s ease-out',
+              'scale-in': 'scaleIn 0.2s ease-out',
             },
             keyframes: {
               fadeIn: {
-                "0%": { opacity: "0" },
-                "100%": { opacity: "1" },
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
               },
               slideUp: {
-                "0%": { transform: "translateY(10px)", opacity: "0" },
-                "100%": { transform: "translateY(0)", opacity: "1" },
+                '0%': { transform: 'translateY(10px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
               },
               slideDown: {
-                "0%": { transform: "translateY(-10px)", opacity: "0" },
-                "100%": { transform: "translateY(0)", opacity: "1" },
+                '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
               },
               scaleIn: {
-                "0%": { transform: "scale(0.95)", opacity: "0" },
-                "100%": { transform: "scale(1)", opacity: "1" },
+                '0%': { transform: 'scale(0.95)', opacity: '0' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
               },
             },
           },
@@ -128,7 +131,11 @@
     </div>
 
     <!-- Main App Container -->
-    <div id="appContainer" class="h-full flex flex-col w-full" style="display: none">
+    <div
+      id="appContainer"
+      class="h-full flex flex-col w-full"
+      style="display: none"
+    >
       <!-- Header -->
       <header
         class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40"
@@ -168,8 +175,6 @@
                 />
               </div>
 
-
-
               <!-- Mobile Menu Button -->
               <button
                 id="mobileMenuButton"
@@ -182,7 +187,7 @@
         </div>
       </header>
 
-            <!-- Mobile Menu -->
+      <!-- Mobile Menu -->
       <div id="mobileMenu" class="mobile-menu lg:hidden">
         <div class="mobile-menu-header">
           <h2 class="mobile-menu-title">EventPro</h2>
@@ -212,6 +217,20 @@
           >
             <i data-lucide="plus" class="w-5 h-5"></i>
             <span>Crear Evento</span>
+          </button>
+          <button
+            id="mobileBtnTecnicos"
+            class="sidebar-nav-item w-full flex items-center"
+          >
+            <i data-lucide="users" class="w-5 h-5"></i>
+            <span>Gestionar Técnicos</span>
+          </button>
+          <button
+            id="mobileBtnMetricas"
+            class="sidebar-nav-item w-full flex items-center"
+          >
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+            <span>Métricas</span>
           </button>
           <button
             id="mobileBtnPerfil"
@@ -282,6 +301,32 @@
                 >
               </button>
               <button
+                id="btnTecnicosSidebar"
+                class="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors group"
+              >
+                <i
+                  data-lucide="users"
+                  class="w-5 h-5 text-gray-600 group-hover:text-primary-600"
+                ></i>
+                <span
+                  class="font-medium text-gray-700 group-hover:text-gray-900"
+                  >Gestionar Técnicos</span
+                >
+              </button>
+              <button
+                id="btnMetricasSidebar"
+                class="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors group"
+              >
+                <i
+                  data-lucide="bar-chart-3"
+                  class="w-5 h-5 text-gray-600 group-hover:text-primary-600"
+                ></i>
+                <span
+                  class="font-medium text-gray-700 group-hover:text-gray-900"
+                  >Métricas</span
+                >
+              </button>
+              <button
                 id="btnPerfilSidebar"
                 class="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors group"
               >
@@ -309,11 +354,11 @@
         </aside>
 
         <!-- Main Content Area -->
-        <main class="flex-1 overflow-hidden">
+        <main class="flex-1 overflow-y-auto">
           <!-- Calendar Container -->
           <div
             id="calendarContainer"
-            class="h-full p-4 lg:p-6"
+            class="min-h-screen p-4 lg:p-6"
             style="display: none"
           >
             <div
@@ -323,8 +368,203 @@
             </div>
           </div>
 
+          <!-- Technicians Management Container -->
+          <div
+            id="techniciansContainer"
+            class="p-4 lg:p-6"
+            style="display: none"
+          >
+            <div class="max-w-4xl mx-auto">
+              <!-- Header Section -->
+              <div class="mb-8">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+                  👥 Gestión de Técnicos
+                </h2>
+                <p class="text-gray-600">Administra tu equipo de técnicos</p>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <button id="btnAgregarTecnico" class="btn btn-primary">
+                  <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                  Agregar Técnico
+                </button>
+                <button id="btnSincronizarTecnicos" class="btn btn-secondary">
+                  <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
+                  Sincronizar
+                </button>
+              </div>
+
+              <!-- Technicians List -->
+              <div
+                id="techniciansManagementList"
+                class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+              >
+                <!-- Lista de técnicos se cargará aquí -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Metrics Container -->
+          <div id="metricsContainer" class="p-4 lg:p-6" style="display: none">
+            <div class="max-w-7xl mx-auto">
+              <!-- Header Section -->
+              <div class="mb-8">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+                  📊 Métricas y Análisis
+                </h2>
+                <p class="text-gray-600">
+                  Analiza el rendimiento de tus eventos
+                </p>
+              </div>
+
+              <!-- Date Range Selector -->
+              <div class="mb-6">
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    id="metricsRange7d"
+                    class="btn btn-secondary btn-sm active"
+                  >
+                    Últimos 7 días
+                  </button>
+                  <button id="metricsRange30d" class="btn btn-secondary btn-sm">
+                    Últimos 30 días
+                  </button>
+                  <button id="metricsRange90d" class="btn btn-secondary btn-sm">
+                    Últimos 3 meses
+                  </button>
+                  <button id="metricsRange1y" class="btn btn-secondary btn-sm">
+                    Último año
+                  </button>
+                </div>
+              </div>
+
+              <!-- Summary Cards -->
+              <div
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+              >
+                <div
+                  class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                >
+                  <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                      <i
+                        data-lucide="calendar-days"
+                        class="w-6 h-6 text-blue-600"
+                      ></i>
+                    </div>
+                    <div class="ml-4">
+                      <p class="text-sm font-medium text-gray-600">
+                        Total Eventos
+                      </p>
+                      <p
+                        id="metricsTotal"
+                        class="text-2xl font-bold text-gray-900"
+                      >
+                        0
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                >
+                  <div class="flex items-center">
+                    <div class="p-2 bg-green-100 rounded-lg">
+                      <i data-lucide="clock" class="w-6 h-6 text-green-600"></i>
+                    </div>
+                    <div class="ml-4">
+                      <p class="text-sm font-medium text-gray-600">
+                        Duración Promedio
+                      </p>
+                      <p
+                        id="metricsAvgDuration"
+                        class="text-2xl font-bold text-gray-900"
+                      >
+                        0h
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                >
+                  <div class="flex items-center">
+                    <div class="p-2 bg-purple-100 rounded-lg">
+                      <i
+                        data-lucide="users"
+                        class="w-6 h-6 text-purple-600"
+                      ></i>
+                    </div>
+                    <div class="ml-4">
+                      <p class="text-sm font-medium text-gray-600">
+                        Técnico Más Usado
+                      </p>
+                      <p
+                        id="metricsTopTechnician"
+                        class="text-sm font-bold text-gray-900"
+                      >
+                        -
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                >
+                  <div class="flex items-center">
+                    <div class="p-2 bg-orange-100 rounded-lg">
+                      <i
+                        data-lucide="trending-up"
+                        class="w-6 h-6 text-orange-600"
+                      ></i>
+                    </div>
+                    <div class="ml-4">
+                      <p class="text-sm font-medium text-gray-600">
+                        Crecimiento
+                      </p>
+                      <p
+                        id="metricsGrowth"
+                        class="text-2xl font-bold text-gray-900"
+                      >
+                        0%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Charts Row -->
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Events Timeline Chart -->
+                <div
+                  class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                >
+                  <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                    📈 Eventos por Período
+                  </h3>
+                  <div class="h-64">
+                    <canvas id="eventsTimelineChart"></canvas>
+                  </div>
+                </div>
+
+                <!-- Technicians Usage Chart -->
+                <div
+                  class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                >
+                  <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                    👥 Uso de Técnicos
+                  </h3>
+                  <div class="h-64">
+                    <canvas id="techniciansUsageChart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Main Content -->
-          <div id="mainContent" class="h-full p-4 lg:p-6">
+          <div id="mainContent" class="p-4 lg:p-6">
             <div class="max-w-7xl mx-auto">
               <!-- Header Section -->
               <div class="mb-8">
@@ -1000,9 +1240,9 @@
     </div>
 
     <!-- Footer -->
-<footer class="footer text-center py-4">
-  <p>Hecho con <span class="heart">❤️</span> por MateCode</p>
-</footer>
+    <footer class="footer text-center py-4">
+      <p>Hecho con <span class="heart">❤️</span> por MateCode</p>
+    </footer>
 
     <!-- FullCalendar JS -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
