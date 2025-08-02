@@ -9,12 +9,16 @@ import { APP_STATE_KEYS } from '../config/constants.js';
 export const metricsManager = {
   charts: {},
   currentRange: '7d',
+  eventsInitialized: false,
 
   /**
    * Inicializa el gestor de métricas
    */
   init() {
-    this.bindEvents();
+    if (!this.eventsInitialized) {
+      this.bindEvents();
+      this.eventsInitialized = true;
+    }
     this.setupDateRangeButtons();
   },
 
@@ -22,7 +26,7 @@ export const metricsManager = {
    * Vincula eventos de la interfaz
    */
   bindEvents() {
-    // Botones de rango de fechas
+    // Botones de rango de fechas (desktop)
     document
       .getElementById('metricsRange7d')
       ?.addEventListener('click', () => this.setDateRange('7d'));
@@ -36,17 +40,15 @@ export const metricsManager = {
       .getElementById('metricsRange1y')
       ?.addEventListener('click', () => this.setDateRange('1y'));
 
-    // Botón de debug
-    document
-      .getElementById('debugMetricsBtn')
-      ?.addEventListener('click', () => this.debugData());
+    // Botones de rango de fechas (móvil)
+    document.querySelectorAll('.mobile-range-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        const range = button.dataset.range;
+        this.setDateRange(range);
+      });
+    });
 
-    // Botón de debug técnicos
-    document
-      .getElementById('debugTechniciansBtn')
-      ?.addEventListener('click', () => this.debugTechniciansAndEvents());
-
-    // Botones de exportación
+    // Botones de exportación (desktop)
     document
       .getElementById('exportPdfReport')
       ?.addEventListener('click', () => this.exportPdfReport());
@@ -56,19 +58,150 @@ export const metricsManager = {
     document
       .getElementById('exportTechnicianCalendar')
       ?.addEventListener('click', () => this.exportTechnicianCalendar());
+
+    // Botones de exportación (móvil)
+    document.querySelectorAll('.mobile-export-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        const exportType = button.dataset.export;
+        switch (exportType) {
+          case 'pdf':
+            this.exportPdfReport();
+            break;
+          case 'excel':
+            this.exportExcelReport();
+            break;
+          case 'calendar':
+            this.exportTechnicianCalendar();
+            break;
+        }
+      });
+    });
   },
 
   /**
    * Configura los botones de rango de fechas
    */
   setupDateRangeButtons() {
-    const buttons = document.querySelectorAll('[id^="metricsRange"]');
-    buttons.forEach(button => {
-      button.classList.remove('active');
+    // Resetear todos los botones a estado inactivo
+    const allButtons = [
+      'metricsRange7d',
+      'metricsRange30d',
+      'metricsRange90d',
+      'metricsRange1y',
+    ];
+
+    allButtons.forEach(buttonId => {
+      const button = document.getElementById(buttonId);
+      if (button) {
+        // Resetear clases para desktop
+        button.className = button.className
+          .replace(
+            /bg-blue-50|border-blue-200|text-blue-600|text-blue-700/g,
+            ''
+          )
+          .replace(
+            /bg-gray-50|border-gray-200|text-gray-600|text-gray-700/g,
+            ''
+          );
+
+        // Aplicar clases inactivas
+        button.classList.add('bg-gray-50', 'border-gray-200');
+        const icon = button.querySelector('i');
+        const span = button.querySelector('span');
+        if (icon)
+          icon.className = icon.className.replace(
+            /text-blue-600/g,
+            'text-gray-600'
+          );
+        if (span)
+          span.className = span.className.replace(
+            /text-blue-700/g,
+            'text-gray-700'
+          );
+      }
     });
-    document
-      .getElementById(`metricsRange${this.currentRange}`)
-      ?.classList.add('active');
+
+    // Activar el botón seleccionado
+    const activeButton = document.getElementById(
+      `metricsRange${this.currentRange}`
+    );
+    if (activeButton) {
+      // Aplicar clases activas
+      activeButton.className = activeButton.className.replace(
+        /bg-gray-50|border-gray-200/g,
+        ''
+      );
+      activeButton.classList.add('bg-blue-50', 'border-blue-200');
+
+      const icon = activeButton.querySelector('i');
+      const span = activeButton.querySelector('span');
+      if (icon)
+        icon.className = icon.className.replace(
+          /text-gray-600/g,
+          'text-blue-600'
+        );
+      if (span)
+        span.className = span.className.replace(
+          /text-gray-700/g,
+          'text-blue-700'
+        );
+    }
+
+    // También actualizar los botones móviles si existen
+    this.updateMobileButtons();
+  },
+
+  /**
+   * Actualiza los botones móviles para reflejar el estado activo
+   */
+  updateMobileButtons() {
+    const mobileButtons = document.querySelectorAll('.mobile-range-btn');
+    if (!mobileButtons.length) return;
+
+    mobileButtons.forEach(button => {
+      const range = button.dataset.range;
+      const isActive = range === this.currentRange;
+
+      if (isActive) {
+        button.className = button.className.replace(
+          /bg-gray-50|border-gray-200|text-gray-600|text-gray-700/g,
+          ''
+        );
+        button.classList.add('bg-blue-50', 'border-blue-200');
+
+        const icon = button.querySelector('i');
+        const span = button.querySelector('span');
+        if (icon)
+          icon.className = icon.className.replace(
+            /text-gray-600/g,
+            'text-blue-600'
+          );
+        if (span)
+          span.className = span.className.replace(
+            /text-gray-700/g,
+            'text-blue-700'
+          );
+      } else {
+        button.className = button.className.replace(
+          /bg-blue-50|border-blue-200|text-blue-600|text-blue-700/g,
+          ''
+        );
+        button.classList.add('bg-gray-50', 'border-gray-200');
+
+        const icon = button.querySelector('i');
+        const span = button.querySelector('span');
+        if (icon)
+          icon.className = icon.className.replace(
+            /text-blue-600/g,
+            'text-gray-600'
+          );
+        if (span)
+          span.className = span.className.replace(
+            /text-gray-700/g,
+            'text-gray-700'
+          );
+      }
+    });
   },
 
   /**
@@ -1101,40 +1234,6 @@ export const metricsManager = {
    */
 
   /**
-   * Debug: Muestra información detallada sobre técnicos y eventos
-   */
-  debugTechniciansAndEvents() {
-    const events = appState.get(APP_STATE_KEYS.EVENTS) || [];
-    const technicians = appState.get(APP_STATE_KEYS.TECHNICIANS) || [];
-
-    console.log('🔍 DEBUG TÉCNICOS Y EVENTOS:');
-    console.log(`📊 Total eventos: ${events.length}`);
-    console.log(`👥 Total técnicos: ${technicians.length}`);
-
-    console.log('\n👥 TÉCNICOS DISPONIBLES:');
-    technicians.forEach((tech, index) => {
-      console.log(`${index + 1}. ID: "${tech.id}" | Nombre: "${tech.nombre}"`);
-    });
-
-    console.log('\n📅 EVENTOS Y SUS TÉCNICOS:');
-    events.forEach((event, index) => {
-      console.log(`\n📅 Evento ${index + 1}: ${event.nombre}`);
-      console.log(
-        `   - technician: "${event.technician}" (tipo: ${typeof event.technician})`
-      );
-      console.log(
-        `   - personal: ${JSON.stringify(event.personal)} (tipo: ${typeof event.personal})`
-      );
-
-      // Mostrar técnicos detectados
-      const detectedTechs = this.getEventTechniciansNames(event, technicians);
-      console.log(`   - Técnicos detectados: "${detectedTechs}"`);
-    });
-
-    return { events, technicians };
-  },
-
-  /**
    * Muestra la sección de métricas
    */
   show() {
@@ -1174,8 +1273,7 @@ export const metricsManager = {
       }
     }
 
-    // Inicializar eventos si no están bindados
-    this.bindEvents();
+    // Los eventos ya están inicializados en init()
     this.setupDateRangeButtons();
 
     // Cargar métricas cuando se muestra la sección

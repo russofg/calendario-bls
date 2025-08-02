@@ -22,6 +22,7 @@ export class UIManager {
       'sidebarToggle',
       'mobileMenuButton',
       'mobileMenu',
+      'mobileMenuClose',
 
       // Sidebar buttons
       'btnInicioSidebar',
@@ -291,6 +292,13 @@ export class UIManager {
       });
     }
 
+    // Mobile menu close
+    if (this.elements.mobileMenuClose) {
+      DOMUtils.addEventListener(this.elements.mobileMenuClose, 'click', () => {
+        this.closeMobileMenu();
+      });
+    }
+
     // Navigation buttons
     this.setupNavigationButtons();
   }
@@ -323,10 +331,8 @@ export class UIManager {
         element: this.elements.btnMetricasSidebar,
         action: () => this.showMetricsSection(),
       },
-      {
-        element: this.elements.btnPerfilSidebar,
-        action: () => this.openProfile(),
-      },
+      // Mobile menu buttons
+      { element: this.elements.mobileBtnInicio, action: () => this.goHome() },
       {
         element: this.elements.mobileBtnCalendar,
         action: () => this.goCalendar(),
