@@ -7,8 +7,8 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: true,
     rollupOptions: {
-      input: './index.html'
-    }
+      input: './index.html',
+    },
   },
   server: {
     port: 3000,
@@ -17,5 +17,5 @@ export default defineConfig({
   define: {
     'process.env': {},
   },
-  publicDir: 'public'
+  publicDir: 'public',
 });

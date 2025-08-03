@@ -90,11 +90,17 @@ class EventProApp {
         metricsManager.init();
 
         // Initialize Google Calendar Manager
-        googleCalendarManager.init().then(() => {
-          console.log('✅ Google Calendar Manager inicializado');
-        }).catch(error => {
-          console.error('❌ Error inicializando Google Calendar Manager:', error);
-        });
+        googleCalendarManager
+          .init()
+          .then(() => {
+            console.log('✅ Google Calendar Manager inicializado');
+          })
+          .catch(error => {
+            console.error(
+              '❌ Error inicializando Google Calendar Manager:',
+              error
+            );
+          });
 
         // Initialize Google Calendar UI Manager
         googleCalendarUIManager.init();

@@ -34,26 +34,32 @@ exports.handler = async (event, context) => {
     </style>
   </head>
   <body>
-    ${error ? `
+    ${
+      error
+        ? `
     <h1>❌ Error de Autorización</h1>
     <div class="error">
       <p>Error: ${error}</p>
       <p><a href="/">← Volver a la aplicación</a></p>
     </div>
-    ` : `
+    `
+        : `
     <h1>🎉 Autorización Exitosa</h1>
     <div class="success">
       <p>✅ Has autorizado correctamente el acceso a Google Calendar</p>
       <p>🔄 Procesando autorización...</p>
     </div>
-    `}
+    `
+    }
 
     <script>
       // Solo procesar si no hay error
-      ${!error && code ? `
+      ${
+        !error && code
+          ? `
       const code = '${code}';
       const state = '${state}';
-      
+
       if (code && (state === 'calendar_auth' || state === 'calendar_auth_main')) {
         console.log('✅ Código de autorización recibido:', code.substring(0, 20) + '...');
 
@@ -63,7 +69,7 @@ exports.handler = async (event, context) => {
         localStorage.setItem('calendar_auth_timestamp', Date.now().toString());
 
         // Mensaje para el usuario
-        document.querySelector('.success p:last-child').innerHTML = 
+        document.querySelector('.success p:last-child').innerHTML =
           '✅ Autorización guardada. Redirigiendo...';
 
         // Redirigir después de un breve delay
@@ -87,7 +93,9 @@ exports.handler = async (event, context) => {
           window.location.href = '/';
         }, 2000);
       }
-      ` : ''}
+      `
+          : ''
+      }
     </script>
   </body>
 </html>
@@ -97,8 +105,8 @@ exports.handler = async (event, context) => {
     statusCode: 200,
     headers: {
       'Content-Type': 'text/html',
-      'Cache-Control': 'no-cache'
+      'Cache-Control': 'no-cache',
     },
-    body: html
+    body: html,
   };
 };

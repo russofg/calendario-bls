@@ -8,9 +8,9 @@ exports.handler = async (event, context) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
       },
-      body: JSON.stringify({ error: 'Method not allowed' })
+      body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
 
@@ -21,20 +21,20 @@ exports.handler = async (event, context) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
       },
-      body: ''
+      body: '',
     };
   }
 
   try {
     const { action, eventData, accessToken } = JSON.parse(event.body);
-    
+
     // Log para debugging
     console.log('📅 Google Calendar API Request:', {
       action,
       eventData,
-      hasAccessToken: !!accessToken
+      hasAccessToken: !!accessToken,
     });
 
     if (!accessToken) {
@@ -42,64 +42,106 @@ exports.handler = async (event, context) => {
         statusCode: 401,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ error: 'Access token is required' })
+        body: JSON.stringify({ error: 'Access token is required' }),
       };
     }
 
-    let apiPath, method, postData = null;
+    let apiPath,
+      method,
+      postData = null;
 
     switch (action) {
       case 'create':
         apiPath = '/calendar/v3/calendars/primary/events';
         method = 'POST';
-        postData = JSON.stringify({
-          summary: eventData.title,
-          description: eventData.description,
-          start: {
-            dateTime: eventData.startTime,
-            timeZone: 'America/Argentina/Buenos_Aires'
-          },
-          end: {
-            dateTime: eventData.endTime,
-            timeZone: 'America/Argentina/Buenos_Aires'
-          },
-          location: eventData.location
-        });
+        
+        // Determinar si es evento de todo el día
+        if (eventData.isAllDay && eventData.startDate && eventData.endDate) {
+          // Para eventos de todo el día, usar formato de fecha sin hora
+          postData = JSON.stringify({
+            summary: eventData.title,
+            description: eventData.description,
+            start: {
+              date: eventData.startDate,
+              timeZone: 'America/Argentina/Buenos_Aires',
+            },
+            end: {
+              date: eventData.endDate,
+              timeZone: 'America/Argentina/Buenos_Aires',
+            },
+            location: eventData.location,
+          });
+        } else {
+          // Para eventos con horario específico
+          postData = JSON.stringify({
+            summary: eventData.title,
+            description: eventData.description,
+            start: {
+              dateTime: eventData.startTime,
+              timeZone: 'America/Argentina/Buenos_Aires',
+            },
+            end: {
+              dateTime: eventData.endTime,
+              timeZone: 'America/Argentina/Buenos_Aires',
+            },
+            location: eventData.location,
+          });
+        }
         break;
-      
+
       case 'update':
         apiPath = `/calendar/v3/calendars/primary/events/${eventData.googleEventId}`;
         method = 'PUT';
-        postData = JSON.stringify({
-          summary: eventData.title,
-          description: eventData.description,
-          start: {
-            dateTime: eventData.startTime,
-            timeZone: 'America/Argentina/Buenos_Aires'
-          },
-          end: {
-            dateTime: eventData.endTime,
-            timeZone: 'America/Argentina/Buenos_Aires'
-          },
-          location: eventData.location
-        });
+        
+        // Determinar si es evento de todo el día
+        if (eventData.isAllDay && eventData.startDate && eventData.endDate) {
+          // Para eventos de todo el día, usar formato de fecha sin hora
+          postData = JSON.stringify({
+            summary: eventData.title,
+            description: eventData.description,
+            start: {
+              date: eventData.startDate,
+              timeZone: 'America/Argentina/Buenos_Aires',
+            },
+            end: {
+              date: eventData.endDate,
+              timeZone: 'America/Argentina/Buenos_Aires',
+            },
+            location: eventData.location,
+          });
+        } else {
+          // Para eventos con horario específico
+          postData = JSON.stringify({
+            summary: eventData.title,
+            description: eventData.description,
+            start: {
+              dateTime: eventData.startTime,
+              timeZone: 'America/Argentina/Buenos_Aires',
+            },
+            end: {
+              dateTime: eventData.endTime,
+              timeZone: 'America/Argentina/Buenos_Aires',
+            },
+            location: eventData.location,
+          });
+        }
         break;
-      
+
       case 'delete':
         apiPath = `/calendar/v3/calendars/primary/events/${eventData.googleEventId}`;
         method = 'DELETE';
         break;
-        
+
       default:
         return {
           statusCode: 400,
           headers: {
             'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ error: 'Invalid action' })
+          body: JSON.stringify({ error: 'Invalid action' }),
         };
     }
 
@@ -111,29 +153,29 @@ exports.handler = async (event, context) => {
         path: apiPath,
         method: method,
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
       };
 
       if (postData) {
         options.headers['Content-Length'] = Buffer.byteLength(postData);
       }
 
-      const req = https.request(options, (res) => {
+      const req = https.request(options, res => {
         let data = '';
-        res.on('data', (chunk) => {
+        res.on('data', chunk => {
           data += chunk;
         });
         res.on('end', () => {
           resolve({
             statusCode: res.statusCode,
-            data: data
+            data: data,
           });
         });
       });
 
-      req.on('error', (error) => {
+      req.on('error', error => {
         reject(error);
       });
 
@@ -149,40 +191,41 @@ exports.handler = async (event, context) => {
         statusCode: calendarResponse.statusCode,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           error: 'Calendar API request failed',
-          details: calendarResponse.data
-        })
+          details: calendarResponse.data,
+        }),
       };
     }
 
     // Respuesta exitosa
-    const responseData = calendarResponse.data ? JSON.parse(calendarResponse.data) : { success: true };
-    
+    const responseData = calendarResponse.data
+      ? JSON.parse(calendarResponse.data)
+      : { success: true };
+
     return {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(responseData)
+      body: JSON.stringify(responseData),
     };
-
   } catch (error) {
     console.error('❌ Error in calendar operation:', error);
     return {
       statusCode: 500,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Internal server error',
         message: error.message,
-        details: error.stack
-      })
+        details: error.stack,
+      }),
     };
   }
 };

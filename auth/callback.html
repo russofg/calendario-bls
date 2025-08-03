@@ -41,7 +41,10 @@
                     <p><a href="/">← Volver a la aplicación</a></p>
                 </div>
             `;
-      } else if (code && (state === 'calendar_auth' || state === 'calendar_auth_main')) {
+      } else if (
+        code &&
+        (state === 'calendar_auth' || state === 'calendar_auth_main')
+      ) {
         console.log(
           '✅ Código de autorización recibido:',
           code.substring(0, 20) + '...'

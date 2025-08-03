@@ -180,6 +180,19 @@ export class EventManager {
 
       const updatedEvent = sortedEvents.find(event => event.id === eventId);
 
+      // Google Calendar sync if event has Google Calendar ID
+      if (updatedEvent.googleCalendarId && googleCalendarManager.isConnected()) {
+        try {
+          await googleCalendarManager.updateCalendarEvent(
+            updatedEvent.googleCalendarId,
+            updatedEvent
+          );
+        } catch (googleError) {
+          console.error('❌ Error updating in Google Calendar:', googleError);
+          // No fallar la actualización por error de Google Calendar
+        }
+      }
+
       // Send WhatsApp notification
       try {
         const notificationResult =
@@ -222,6 +235,16 @@ export class EventManager {
         event => event.id !== eventId
       );
       this.appState.set(APP_STATE_KEYS.EVENTS, filteredEvents);
+
+      // Google Calendar sync if event has Google Calendar ID
+      if (eventToDelete && eventToDelete.googleCalendarId && googleCalendarManager.isConnected()) {
+        try {
+          await googleCalendarManager.deleteCalendarEvent(eventToDelete.googleCalendarId);
+        } catch (googleError) {
+          console.error('❌ Error deleting from Google Calendar:', googleError);
+          // No fallar la eliminación por error de Google Calendar
+        }
+      }
 
       // Send WhatsApp notification
       if (eventToDelete) {
