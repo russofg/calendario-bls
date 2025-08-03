@@ -5,13 +5,14 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
-# Redirects para OAuth callback
+# Redirects para OAuth callback (debe ir ANTES del SPA fallback)
 [[redirects]]
-  from = "/auth/callback"
+  from = "/auth/callback*"
   to = "/auth/callback.html"
   status = 200
+  force = true
 
-# SPA fallback para otras rutas
+# SPA fallback para otras rutas (debe ir AL FINAL)
 [[redirects]]
   from = "/*"
   to = "/index.html"
