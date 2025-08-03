@@ -1267,6 +1267,51 @@
             </button>
           </div>
 
+          <!-- Google Calendar Sync Section -->
+          <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3">
+                <i data-lucide="calendar" class="w-5 h-5 text-blue-600"></i>
+                <div>
+                  <h3 class="font-medium text-blue-900">
+                    Sincronización con Google Calendar
+                  </h3>
+                  <p id="calendarSyncStatus" class="text-sm text-blue-700">
+                    🔴 Google Calendar desconectado
+                  </p>
+                </div>
+              </div>
+              <div class="flex space-x-2">
+                <button
+                  id="btnConnectGoogleCalendar"
+                  class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Conectar
+                </button>
+                <button
+                  id="btnDisconnectGoogleCalendar"
+                  class="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 transition-colors hidden"
+                >
+                  Desconectar
+                </button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <label class="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="syncWithGoogleCalendar"
+                  class="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                  disabled
+                />
+                <span class="text-sm text-blue-800"
+                  >Sincronizar automáticamente este evento con Google
+                  Calendar</span
+                >
+              </label>
+            </div>
+          </div>
+
           <form id="createEventForm" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

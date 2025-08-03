@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Simple Google Calendar</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      .log {
+        background: #f5f5f5;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
+        height: 200px;
+        overflow-y: auto;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        background: #4285f4;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔧 Test Simple Google Calendar</h1>
+
+    <p>
+      <strong>Client ID:</strong>
+      1097397293263-t7jntqr4tsp4np34f63os3221d4c7qkp.apps.googleusercontent.com
+    </p>
+
+    <button onclick="testAuth()">🚀 Test de Autenticación</button>
+    <button onclick="clearLog()">🗑️ Limpiar Log</button>
+
+    <div id="status" class="status">Esperando...</div>
+    <div id="log" class="log"></div>
+
+    <script>
+      const CLIENT_ID =
+        '1097397293263-t7jntqr4tsp4np34f63os3221d4c7qkp.apps.googleusercontent.com';
+
+      function log(message) {
+        const logDiv = document.getElementById('log');
+        const time = new Date().toLocaleTimeString();
+        logDiv.innerHTML += `[${time}] ${message}<br>`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+        console.log(message);
+      }
+
+      function setStatus(message, type = '') {
+        const statusDiv = document.getElementById('status');
+        statusDiv.className = `status ${type}`;
+        statusDiv.textContent = message;
+      }
+
+      function clearLog() {
+        document.getElementById('log').innerHTML = '';
+      }
+
+      function testAuth() {
+        log('🔄 Iniciando test de autenticación...');
+        setStatus('Cargando...', '');
+
+        // Cargar Google API directamente
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.onload = () => {
+          log('✅ Google Identity Services cargado');
+          initializeGSI();
+        };
+        script.onerror = () => {
+          log('❌ Error cargando Google Identity Services');
+          setStatus('Error cargando Google API', 'error');
+        };
+        document.head.appendChild(script);
+      }
+
+      function initializeGSI() {
+        try {
+          log('🔄 Inicializando Google Sign-In...');
+
+          // Configurar Google Sign-In
+          google.accounts.id.initialize({
+            client_id: CLIENT_ID,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: false,
+          });
+
+          log('✅ Google Sign-In inicializado');
+
+          // También configurar OAuth para Calendar API
+          initializeOAuth();
+
+          // Mostrar botón de sign-in
+          google.accounts.id.renderButton(
+            document.getElementById('signin-button') || createSignInButton(),
+            {
+              theme: 'outline',
+              size: 'large',
+              text: 'signin_with',
+              locale: 'es',
+            }
+          );
+
+          log('✅ Botón de Sign-In creado');
+          setStatus(
+            'Listo - Haz clic en "Iniciar sesión con Google"',
+            'success'
+          );
+        } catch (error) {
+          log(`❌ Error en GSI: ${error.message}`);
+          setStatus(`Error: ${error.message}`, 'error');
+        }
+      }
+
+      function initializeOAuth() {
+        // Crear botón para OAuth con Calendar scopes
+        const oauthButton = document.createElement('button');
+        oauthButton.textContent = '📅 Autorizar Calendar API';
+        oauthButton.onclick = requestCalendarPermission;
+        oauthButton.style.display = 'block';
+        oauthButton.style.margin = '10px 0';
+        document.body.appendChild(oauthButton);
+        log('✅ Botón OAuth para Calendar creado');
+      }
+
+      function requestCalendarPermission() {
+        log('🔄 Solicitando permisos para Calendar...');
+
+        const oauth2Endpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
+
+        const params = new URLSearchParams({
+          client_id: CLIENT_ID,
+          redirect_uri: window.location.origin + '/auth/callback',
+          response_type: 'code',
+          scope:
+            'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
+          access_type: 'offline',
+          state: 'calendar_auth',
+        });
+
+        const authUrl = `${oauth2Endpoint}?${params}`;
+        log(`🔗 Redirigiendo a: ${authUrl}`);
+
+        window.location.href = authUrl;
+      }
+
+      function checkForAuthCode() {
+        // Verificar si volvemos de una autorización exitosa
+        const urlParams = new URLSearchParams(window.location.search);
+        const authSuccess = urlParams.get('auth');
+
+        if (authSuccess === 'success') {
+          const code = localStorage.getItem('calendar_auth_code');
+          const timestamp = localStorage.getItem('calendar_auth_timestamp');
+
+          if (code && timestamp) {
+            const timeDiff = Date.now() - parseInt(timestamp);
+            // Si el código tiene menos de 10 minutos
+            if (timeDiff < 600000) {
+              log('✅ Código de autorización recibido desde callback');
+              log(`📋 Código: ${code.substring(0, 20)}...`);
+              setStatus('¡Autorización de Calendar exitosa!', 'success');
+
+              // Limpiar datos y URL
+              localStorage.removeItem('calendar_auth_code');
+              localStorage.removeItem('calendar_auth_timestamp');
+              window.history.replaceState(
+                {},
+                document.title,
+                window.location.pathname
+              );
+
+              return true;
+            }
+          }
+        }
+
+        return false;
+      }
+
+      function createSignInButton() {
+        const button = document.createElement('div');
+        button.id = 'signin-button';
+        button.style.margin = '20px 0';
+        document.body.appendChild(button);
+        return button;
+      }
+
+      function handleCredentialResponse(response) {
+        log('✅ Usuario autenticado correctamente');
+        log(`📋 Token recibido: ${response.credential.substring(0, 50)}...`);
+        setStatus('¡Autenticación exitosa!', 'success');
+
+        // Decodificar el token JWT para mostrar info del usuario
+        try {
+          const payload = JSON.parse(atob(response.credential.split('.')[1]));
+          log(`👤 Usuario: ${payload.email}`);
+          log(`📛 Nombre: ${payload.name}`);
+
+          // Ahora podemos proceder a probar Calendar API
+          testCalendarAPI(response.credential);
+        } catch (error) {
+          log(`⚠️ Error decodificando token: ${error.message}`);
+        }
+      }
+
+      function testCalendarAPI(token) {
+        log('🔄 Probando acceso a Calendar API...');
+
+        // Test simple de acceso a Calendar
+        fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then(response => {
+            if (response.ok) {
+              log('✅ Calendar API accesible');
+              return response.json();
+            } else {
+              throw new Error(`HTTP ${response.status}`);
+            }
+          })
+          .then(data => {
+            log(`📅 Calendarios encontrados: ${data.items?.length || 0}`);
+            setStatus('¡Google Calendar API funcionando!', 'success');
+          })
+          .catch(error => {
+            log(`❌ Error accediendo Calendar API: ${error.message}`);
+            log(
+              'ℹ️ Esto es normal si no se han configurado los scopes de Calendar'
+            );
+          });
+      }
+
+      // Inicializar
+      window.onload = () => {
+        log('🚀 Test simple iniciado');
+        log(
+          'ℹ️ Usa este test para verificar que la autenticación básica funciona'
+        );
+
+        // Verificar si volvemos de una autorización OAuth
+        if (checkForAuthCode()) {
+          log('🔄 Procesando autorización de Calendar...');
+        }
+
+        setStatus('Haz clic en "Test de Autenticación" para comenzar', '');
+      };
+    </script>
+  </body>
+</html>

@@ -6,6 +6,8 @@ import { technicianManager } from './modules/technicianManager.js';
 import { calendarManager } from './modules/calendarManager.js';
 import { uiManager } from './modules/uiManager.js';
 import { metricsManager } from './modules/metricsManager.js';
+import { googleCalendarManager } from './modules/googleCalendarManager.js';
+import googleCalendarUIManager from './modules/googleCalendarUIManager.js';
 import { NotificationManager } from './utils/notifications.js';
 import { Helpers } from './utils/helpers.js';
 
@@ -20,6 +22,8 @@ class EventProApp {
       calendarManager,
       uiManager,
       metricsManager,
+      googleCalendarManager,
+      googleCalendarUIManager,
     };
   }
 
@@ -84,6 +88,16 @@ class EventProApp {
 
         // Initialize MetricsManager
         metricsManager.init();
+
+        // Initialize Google Calendar Manager
+        googleCalendarManager.init().then(() => {
+          console.log('✅ Google Calendar Manager inicializado');
+        }).catch(error => {
+          console.error('❌ Error inicializando Google Calendar Manager:', error);
+        });
+
+        // Initialize Google Calendar UI Manager
+        googleCalendarUIManager.init();
       } else {
         console.warn(
           '⚠️ Firebase not available yet, managers will be initialized later'
@@ -290,7 +304,10 @@ class EventProApp {
 
       if (!eventData) return;
 
-      await eventManager.createEvent(eventData);
+      // Verificar si la sincronización con Google Calendar está habilitada
+      const syncWithGoogleCalendar = googleCalendarUIManager.isSyncEnabled();
+
+      await eventManager.createEvent(eventData, syncWithGoogleCalendar);
 
       // Hide modal and reset form
       uiManager.hideModal(uiManager.getElement('createEventModal'));

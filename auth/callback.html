@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calendar Auth Callback</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 50px;
+      }
+      .success {
+        color: #155724;
+        background: #d4edda;
+        padding: 20px;
+        border-radius: 5px;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎉 Autorización Exitosa</h1>
+    <div class="success">
+      <p>✅ Has autorizado correctamente el acceso a Google Calendar</p>
+      <p>🔄 Procesando autorización...</p>
+    </div>
+
+    <script>
+      // Capturar el código de autorización
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const error = urlParams.get('error');
+
+      if (error) {
+        document.body.innerHTML = `
+                <h1>❌ Error de Autorización</h1>
+                <div style="color: #721c24; background: #f8d7da; padding: 20px; border-radius: 5px;">
+                    <p>Error: ${error}</p>
+                    <p><a href="/">← Volver a la aplicación</a></p>
+                </div>
+            `;
+      } else if (code && (state === 'calendar_auth' || state === 'calendar_auth_main')) {
+        console.log(
+          '✅ Código de autorización recibido:',
+          code.substring(0, 20) + '...'
+        );
+
+        // Guardar en localStorage para que el test principal pueda accederlo
+        localStorage.setItem('calendar_auth_code', code);
+        localStorage.setItem('calendar_auth_timestamp', Date.now().toString());
+
+        // Redirigir de vuelta a la aplicación principal
+        setTimeout(() => {
+          window.location.href = '/?auth=success';
+        }, 2000);
+      } else {
+        document.body.innerHTML = `
+                <h1>⚠️ Respuesta Inesperada</h1>
+                <div style="color: #856404; background: #fff3cd; padding: 20px; border-radius: 5px;">
+                    <p>No se recibió el código de autorización esperado.</p>
+                    <p><a href="/">← Volver a la aplicación</a></p>
+                </div>
+            `;
+      }
+    </script>
+  </body>
+</html>

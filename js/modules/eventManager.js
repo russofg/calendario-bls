@@ -1,8 +1,9 @@
-// Event Manager with WhatsApp Notifications
+// Event Manager with WhatsApp Notifications and Google Calendar Sync
 import { COLLECTIONS, APP_STATE_KEYS } from '../config/constants.js';
 import { Helpers } from '../utils/helpers.js';
 import { NotificationManager } from '../utils/notifications.js';
 import { WhatsAppNotificationManager } from './whatsappNotificationManager.js';
+import { googleCalendarManager } from './googleCalendarManager.js';
 
 export class EventManager {
   constructor() {
@@ -18,6 +19,19 @@ export class EventManager {
     this.appState = appState;
     this.whatsappManager = new WhatsAppNotificationManager(db);
     this.isInitialized = true;
+
+    // Inicializar Google Calendar Manager
+    this.initializeGoogleCalendar();
+  }
+
+  // Initialize Google Calendar integration
+  async initializeGoogleCalendar() {
+    try {
+      await googleCalendarManager.init();
+      console.log('Google Calendar Manager inicializado');
+    } catch (error) {
+      console.warn('Google Calendar no disponible:', error);
+    }
   }
 
   // Check if manager is initialized
@@ -58,7 +72,7 @@ export class EventManager {
   }
 
   // Create new event
-  async createEvent(eventData) {
+  async createEvent(eventData, syncWithGoogleCalendar = false) {
     try {
       // Add event to Firestore
       const docRef = await this.db.collection(COLLECTIONS.EVENTS).add({
@@ -73,6 +87,32 @@ export class EventManager {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+
+      // Google Calendar sync if enabled and authorized
+      if (syncWithGoogleCalendar && googleCalendarManager.isConnected()) {
+        try {
+          const googleEvent =
+            await googleCalendarManager.createCalendarEvent(newEvent);
+          // Update event with Google Calendar ID (solo el ID, no el objeto completo)
+          const googleEventId = googleEvent.id;
+          await this.db.collection(COLLECTIONS.EVENTS).doc(docRef.id).update({
+            googleCalendarId: googleEventId,
+          });
+          newEvent.googleCalendarId = googleEventId;
+          console.log(
+            'Evento sincronizado con Google Calendar:',
+            googleEventId
+          );
+        } catch (calendarError) {
+          console.error(
+            'Error sincronizando con Google Calendar:',
+            calendarError
+          );
+          NotificationManager.showWarning(
+            'Evento creado, pero no se pudo sincronizar con Google Calendar'
+          );
+        }
+      }
 
       // Update local state - mantener orden por fecha
       const currentEvents = this.appState.get(APP_STATE_KEYS.EVENTS);
@@ -89,8 +129,7 @@ export class EventManager {
 
       // Send WhatsApp notification
       try {
-        const notificationResult =
-          await this.whatsappManager.sendEventCreatedNotification(newEvent);
+        await this.whatsappManager.sendEventCreatedNotification(newEvent);
 
         // Schedule reminders
         await this.whatsappManager.scheduleEventReminders(newEvent);
