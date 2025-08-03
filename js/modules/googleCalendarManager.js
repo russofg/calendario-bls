@@ -212,6 +212,17 @@ class GoogleCalendarManager {
     try {
       console.log('🔄 Creando evento en Google Calendar:', eventData);
       
+      // Convertir fechas al formato ISO para Google Calendar
+      const formatDateForGoogle = (date) => {
+        if (date instanceof Date) {
+          return date.toISOString();
+        }
+        if (typeof date === 'string') {
+          return new Date(date).toISOString();
+        }
+        return date;
+      };
+      
       const response = await fetch('/.netlify/functions/google-calendar', {
         method: 'POST',
         headers: {
@@ -222,8 +233,8 @@ class GoogleCalendarManager {
           eventData: {
             title: eventData.nombre || eventData.title,
             description: eventData.descripcion || eventData.description,
-            startTime: eventData.fechaInicio || eventData.startTime,
-            endTime: eventData.fechaFin || eventData.endTime,
+            startTime: formatDateForGoogle(eventData.fechaInicio || eventData.startTime),
+            endTime: formatDateForGoogle(eventData.fechaFin || eventData.endTime),
             location: eventData.ubicacion || eventData.location
           },
           accessToken: this.accessToken
@@ -232,6 +243,7 @@ class GoogleCalendarManager {
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ Google Calendar API Error:', errorData);
         throw new Error(errorData.error || 'Failed to create calendar event');
       }
       

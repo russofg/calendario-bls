@@ -29,6 +29,13 @@ exports.handler = async (event, context) => {
 
   try {
     const { action, eventData, accessToken } = JSON.parse(event.body);
+    
+    // Log para debugging
+    console.log('📅 Google Calendar API Request:', {
+      action,
+      eventData,
+      hasAccessToken: !!accessToken
+    });
 
     if (!accessToken) {
       return {
@@ -164,7 +171,7 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Error in calendar operation:', error);
+    console.error('❌ Error in calendar operation:', error);
     return {
       statusCode: 500,
       headers: {
@@ -173,7 +180,8 @@ exports.handler = async (event, context) => {
       },
       body: JSON.stringify({ 
         error: 'Internal server error',
-        message: error.message
+        message: error.message,
+        details: error.stack
       })
     };
   }
