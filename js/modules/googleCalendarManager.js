@@ -215,10 +215,24 @@ class GoogleCalendarManager {
       // Convertir fechas para eventos de todo el día en Google Calendar
       const formatDateForGoogleAllDay = (date, isEndDate = false) => {
         let dateObj;
+        
         if (date instanceof Date) {
           dateObj = new Date(date);
         } else if (typeof date === 'string') {
-          dateObj = new Date(date);
+          // Para evitar problemas de zona horaria, parsear la fecha correctamente
+          if (date.includes('T')) {
+            // Si tiene hora, usar como está
+            dateObj = new Date(date);
+          } else {
+            // Si es solo fecha (YYYY-MM-DD), parseamos localmente
+            const parts = date.split('-');
+            if (parts.length === 3) {
+              // Crear fecha local sin problemas de UTC
+              dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            } else {
+              dateObj = new Date(date);
+            }
+          }
         } else {
           return date;
         }
@@ -229,6 +243,7 @@ class GoogleCalendarManager {
           dateObj.setDate(dateObj.getDate() + 1);
         }
         
+        // Usar métodos locales para evitar problemas de zona horaria
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
@@ -288,10 +303,24 @@ class GoogleCalendarManager {
       // Convertir fechas para eventos de todo el día
       const formatDateForGoogleAllDay = (date, isEndDate = false) => {
         let dateObj;
+        
         if (date instanceof Date) {
           dateObj = new Date(date);
         } else if (typeof date === 'string') {
-          dateObj = new Date(date);
+          // Para evitar problemas de zona horaria, parsear la fecha correctamente
+          if (date.includes('T')) {
+            // Si tiene hora, usar como está
+            dateObj = new Date(date);
+          } else {
+            // Si es solo fecha (YYYY-MM-DD), parseamos localmente
+            const parts = date.split('-');
+            if (parts.length === 3) {
+              // Crear fecha local sin problemas de UTC
+              dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            } else {
+              dateObj = new Date(date);
+            }
+          }
         } else {
           return date;
         }
@@ -302,6 +331,7 @@ class GoogleCalendarManager {
           dateObj.setDate(dateObj.getDate() + 1);
         }
         
+        // Usar métodos locales para evitar problemas de zona horaria
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
