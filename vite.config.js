@@ -6,6 +6,12 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        callback: './public/auth/callback.html'
+      }
+    }
   },
   server: {
     port: 3000,
@@ -14,4 +20,5 @@ export default defineConfig({
   define: {
     'process.env': {},
   },
+  publicDir: 'public'
 });
