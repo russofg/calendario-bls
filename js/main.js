@@ -310,10 +310,9 @@ class EventProApp {
 
       if (!eventData) return;
 
-      // Verificar si la sincronización con Google Calendar está habilitada
-      const syncWithGoogleCalendar = googleCalendarUIManager.isSyncEnabled();
-
-      await eventManager.createEvent(eventData, syncWithGoogleCalendar);
+      // Sincronización automática: usar null para que eventManager decida automáticamente
+      // basado en si Google Calendar está conectado
+      await eventManager.createEvent(eventData, null);
 
       // Hide modal and reset form
       uiManager.hideModal(uiManager.getElement('createEventModal'));

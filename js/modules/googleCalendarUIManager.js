@@ -127,11 +127,30 @@ export class GoogleCalendarUIManager {
       }
     }
 
-    // Actualizar checkbox
+    // Actualizar checkbox - ocultar cuando está conectado para sincronización automática
     if (this.syncCheckbox) {
-      this.syncCheckbox.disabled = !isConnected;
-      if (!isConnected) {
-        this.syncCheckbox.checked = false;
+      const syncContainer = this.syncCheckbox.closest('.google-calendar-sync');
+      
+      if (isConnected) {
+        // Ocultar checkbox y mostrar mensaje de sincronización automática
+        if (syncContainer) {
+          syncContainer.innerHTML = `
+            <div class="flex items-center space-x-2 text-green-600">
+              <i data-lucide="calendar-check" class="w-4 h-4"></i>
+              <span class="text-sm font-medium">Sincronización automática activada</span>
+            </div>
+          `;
+        }
+      } else {
+        // Mostrar mensaje de que necesita conectar
+        if (syncContainer) {
+          syncContainer.innerHTML = `
+            <div class="flex items-center space-x-2 text-gray-500">
+              <i data-lucide="calendar-x" class="w-4 h-4"></i>
+              <span class="text-sm">Conecta Google Calendar para sincronización automática</span>
+            </div>
+          `;
+        }
       }
     }
 

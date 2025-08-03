@@ -72,8 +72,13 @@ export class EventManager {
   }
 
   // Create new event
-  async createEvent(eventData, syncWithGoogleCalendar = false) {
+  async createEvent(eventData, syncWithGoogleCalendar = null) {
     try {
+      // Auto-determinar sincronización si no se especifica
+      if (syncWithGoogleCalendar === null) {
+        syncWithGoogleCalendar = googleCalendarManager.isConnected();
+      }
+
       // Add event to Firestore
       const docRef = await this.db.collection(COLLECTIONS.EVENTS).add({
         ...eventData,
@@ -181,7 +186,10 @@ export class EventManager {
       const updatedEvent = sortedEvents.find(event => event.id === eventId);
 
       // Google Calendar sync if event has Google Calendar ID
-      if (updatedEvent.googleCalendarId && googleCalendarManager.isConnected()) {
+      if (
+        updatedEvent.googleCalendarId &&
+        googleCalendarManager.isConnected()
+      ) {
         try {
           await googleCalendarManager.updateCalendarEvent(
             updatedEvent.googleCalendarId,
@@ -237,9 +245,15 @@ export class EventManager {
       this.appState.set(APP_STATE_KEYS.EVENTS, filteredEvents);
 
       // Google Calendar sync if event has Google Calendar ID
-      if (eventToDelete && eventToDelete.googleCalendarId && googleCalendarManager.isConnected()) {
+      if (
+        eventToDelete &&
+        eventToDelete.googleCalendarId &&
+        googleCalendarManager.isConnected()
+      ) {
         try {
-          await googleCalendarManager.deleteCalendarEvent(eventToDelete.googleCalendarId);
+          await googleCalendarManager.deleteCalendarEvent(
+            eventToDelete.googleCalendarId
+          );
         } catch (googleError) {
           console.error('❌ Error deleting from Google Calendar:', googleError);
           // No fallar la eliminación por error de Google Calendar

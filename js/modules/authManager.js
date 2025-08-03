@@ -64,6 +64,9 @@ export class AuthManager {
 
       NotificationManager.showSuccess('Sesión iniciada exitosamente');
 
+      // Auto-iniciar sincronización con Google Calendar si es login con Gmail
+      this.checkAndInitiateGoogleCalendarSync(user);
+
       // Emit custom event for other modules to listen
       this.emitAuthEvent('login', completeUser, userData);
     } catch (error) {
@@ -298,6 +301,39 @@ export class AuthManager {
       currentUser.photoURL ||
       'https://via.placeholder.com/32'
     );
+  }
+
+  // Auto-iniciar sincronización con Google Calendar si es apropiado
+  async checkAndInitiateGoogleCalendarSync(user) {
+    try {
+      // Verificar si el usuario se logueó con Gmail/Google
+      const isGoogleLogin = user.providerData && 
+        user.providerData.some(provider => provider.providerId === 'google.com');
+      
+      if (isGoogleLogin && !localStorage.getItem('google_calendar_token')) {
+        // Es login con Google y no tiene token de Calendar
+        console.log('🔄 Usuario logueado con Gmail - iniciando sincronización automática');
+        
+        // Esperar un poco para que la UI se estabilice
+        setTimeout(async () => {
+          try {
+            // Importar dinámicamente para evitar dependencia circular
+            const { googleCalendarManager } = await import('./googleCalendarManager.js');
+            
+            // Iniciar autenticación automáticamente
+            await googleCalendarManager.authenticate();
+            
+            NotificationManager.showInfo(
+              'Iniciando sincronización automática con Google Calendar...'
+            );
+          } catch (error) {
+            console.error('Error en sincronización automática:', error);
+          }
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error verificando sincronización automática:', error);
+    }
   }
 
   // Custom event emitter for auth events

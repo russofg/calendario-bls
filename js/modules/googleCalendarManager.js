@@ -1,4 +1,7 @@
-import { GOOGLE_CALENDAR_CONFIG, REDIRECT_URIS } from '../config/googleCalendar.js';
+import {
+  GOOGLE_CALENDAR_CONFIG,
+  REDIRECT_URIS,
+} from '../config/googleCalendar.js';
 import { NotificationManager } from '../utils/notifications.js';
 
 /**
@@ -19,20 +22,20 @@ class GoogleCalendarManager {
   async init() {
     try {
       console.log('🔄 Inicializando Google Calendar Manager...');
-      
+
       // Verificar si hay un código de autorización en el callback
       await this.checkForAuthCallback();
-      
+
       // Verificar si tenemos token guardado
       const savedToken = localStorage.getItem('google_calendar_token');
       const tokenExpiry = localStorage.getItem('google_calendar_token_expiry');
-      
+
       if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
         this.accessToken = savedToken;
         this.isAuthenticated = true;
         console.log('✅ Token de Google Calendar válido encontrado');
       }
-      
+
       this.isInitialized = true;
       return true;
     } catch (error) {
@@ -50,24 +53,23 @@ class GoogleCalendarManager {
     const authCode = localStorage.getItem('calendar_auth_code');
     const authState = localStorage.getItem('calendar_auth_state');
     const authTimestamp = localStorage.getItem('calendar_auth_timestamp');
-    
+
     if (authCode && authState && authTimestamp) {
       // Verificar que no sea muy antiguo (5 minutos máximo)
       const timestamp = parseInt(authTimestamp);
       if (Date.now() - timestamp < 5 * 60 * 1000) {
         console.log('🔄 Procesando código de autorización...');
-        
+
         try {
           await this.handleAuthCallback(authCode);
-          
+
           // Limpiar localStorage después del procesamiento exitoso
           localStorage.removeItem('calendar_auth_code');
           localStorage.removeItem('calendar_auth_state');
           localStorage.removeItem('calendar_auth_timestamp');
-          
+
           // Emitir evento para actualizar UI
           window.dispatchEvent(new CustomEvent('googleCalendarConnected'));
-          
         } catch (error) {
           console.error('❌ Error procesando callback:', error);
           // Limpiar localStorage en caso de error también
@@ -90,12 +92,13 @@ class GoogleCalendarManager {
   async authenticate() {
     try {
       console.log('🔄 Iniciando autenticación OAuth...');
-      
+
       const oauth2Endpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
-      const redirectUri = window.location.hostname === 'localhost' 
-        ? REDIRECT_URIS.development 
-        : REDIRECT_URIS.production;
-      
+      const redirectUri =
+        window.location.hostname === 'localhost'
+          ? REDIRECT_URIS.development
+          : REDIRECT_URIS.production;
+
       const params = new URLSearchParams({
         client_id: GOOGLE_CALENDAR_CONFIG.CLIENT_ID,
         redirect_uri: redirectUri,
@@ -103,18 +106,17 @@ class GoogleCalendarManager {
         scope: GOOGLE_CALENDAR_CONFIG.SCOPES.join(' '),
         access_type: 'offline',
         prompt: 'consent',
-        state: 'calendar_auth_main'
+        state: 'calendar_auth_main',
       });
-      
+
       const authUrl = `${oauth2Endpoint}?${params}`;
       console.log('🔗 Redirigiendo a OAuth:', authUrl);
-      
+
       // Guardar estado antes de redireccionar
       localStorage.setItem('oauth_state', 'calendar_auth_main');
       localStorage.setItem('oauth_redirect_time', Date.now().toString());
-      
+
       window.location.href = authUrl;
-      
     } catch (error) {
       console.error('❌ Error en autenticación:', error);
       NotificationManager.showError('Error en autenticación con Google');
@@ -128,11 +130,12 @@ class GoogleCalendarManager {
   async handleAuthCallback(code) {
     try {
       console.log('🔄 Procesando código de autorización...');
-      
-      const redirectUri = window.location.hostname === 'localhost' 
-        ? REDIRECT_URIS.development 
-        : REDIRECT_URIS.production;
-      
+
+      const redirectUri =
+        window.location.hostname === 'localhost'
+          ? REDIRECT_URIS.development
+          : REDIRECT_URIS.production;
+
       // Llamar a la función de Netlify para intercambiar el código por token
       const response = await fetch('/.netlify/functions/google-auth', {
         method: 'POST',
@@ -141,37 +144,97 @@ class GoogleCalendarManager {
         },
         body: JSON.stringify({
           code: code,
-          redirectUri: redirectUri
-        })
+          redirectUri: redirectUri,
+        }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to exchange code for token');
       }
-      
+
       const tokens = await response.json();
-      
+
       // Guardar tokens
       this.accessToken = tokens.access_token;
       this.isAuthenticated = true;
-      
-      const expiryTime = Date.now() + (tokens.expires_in * 1000);
+
+      const expiryTime = Date.now() + tokens.expires_in * 1000;
       localStorage.setItem('google_calendar_token', this.accessToken);
-      localStorage.setItem('google_calendar_token_expiry', expiryTime.toString());
+      localStorage.setItem(
+        'google_calendar_token_expiry',
+        expiryTime.toString()
+      );
       if (tokens.refresh_token) {
-        localStorage.setItem('google_calendar_refresh_token', tokens.refresh_token);
+        localStorage.setItem(
+          'google_calendar_refresh_token',
+          tokens.refresh_token
+        );
       }
-      
+
       console.log('✅ Autenticación completada');
       NotificationManager.showSuccess('¡Conectado a Google Calendar!');
-      
+
+      // Iniciar sincronización de eventos existentes
+      this.syncExistingEvents();
+
       return true;
-      
     } catch (error) {
       console.error('❌ Error procesando callback:', error);
       NotificationManager.showError('Error procesando autorización');
       throw error;
+    }
+  }
+
+  /**
+   * Sincronizar eventos existentes en Firebase con Google Calendar
+   */
+  async syncExistingEvents() {
+    try {
+      console.log('🔄 Iniciando sincronización de eventos existentes...');
+      
+      // Importar dinámicamente para evitar dependencia circular
+      const { eventManager } = await import('./eventManager.js');
+      
+      // Obtener todos los eventos que no tienen googleCalendarId
+      const allEvents = eventManager.appState.get('events') || [];
+      const eventsToSync = allEvents.filter(event => !event.googleCalendarId);
+      
+      if (eventsToSync.length === 0) {
+        console.log('✅ No hay eventos pendientes de sincronización');
+        return;
+      }
+      
+      console.log(`🔄 Sincronizando ${eventsToSync.length} eventos existentes...`);
+      
+      let syncedCount = 0;
+      for (const event of eventsToSync) {
+        try {
+          const googleEvent = await this.createCalendarEvent(event);
+          
+          // Actualizar el evento en Firebase con el googleCalendarId
+          await eventManager.db.collection('events').doc(event.id).update({
+            googleCalendarId: googleEvent.id
+          });
+          
+          // Actualizar en el estado local
+          const updatedEvents = allEvents.map(e => 
+            e.id === event.id ? { ...e, googleCalendarId: googleEvent.id } : e
+          );
+          eventManager.appState.set('events', updatedEvents);
+          
+          syncedCount++;
+        } catch (error) {
+          console.error(`❌ Error sincronizando evento ${event.nombre}:`, error);
+        }
+      }
+      
+      NotificationManager.showSuccess(
+        `✅ ${syncedCount} eventos sincronizados con Google Calendar`
+      );
+      
+    } catch (error) {
+      console.error('❌ Error en sincronización masiva:', error);
     }
   }
 
@@ -189,14 +252,14 @@ class GoogleCalendarManager {
     this.isAuthenticated = false;
     this.accessToken = null;
     this.user = null;
-    
+
     // Limpiar localStorage
     localStorage.removeItem('google_calendar_token');
     localStorage.removeItem('google_calendar_token_expiry');
     localStorage.removeItem('google_auth_code');
     localStorage.removeItem('google_auth_timestamp');
     localStorage.removeItem('calendar_auth_code');
-    
+
     console.log('🔄 Desconectado de Google Calendar');
     NotificationManager.showInfo('Desconectado de Google Calendar');
   }
@@ -211,11 +274,11 @@ class GoogleCalendarManager {
 
     try {
       console.log('🔄 Creando evento en Google Calendar:', eventData);
-      
+
       // Convertir fechas para eventos de todo el día en Google Calendar
       const formatDateForGoogleAllDay = (date, isEndDate = false) => {
         let dateObj;
-        
+
         if (date instanceof Date) {
           dateObj = new Date(date);
         } else if (typeof date === 'string') {
@@ -228,7 +291,11 @@ class GoogleCalendarManager {
             const parts = date.split('-');
             if (parts.length === 3) {
               // Crear fecha local sin problemas de UTC
-              dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+              dateObj = new Date(
+                parseInt(parts[0], 10),
+                parseInt(parts[1], 10) - 1,
+                parseInt(parts[2], 10)
+              );
             } else {
               dateObj = new Date(date);
             }
@@ -236,20 +303,20 @@ class GoogleCalendarManager {
         } else {
           return date;
         }
-        
+
         // Para eventos de todo el día, Google Calendar requiere que la fecha de fin
         // sea el día siguiente al último día del evento
         if (isEndDate) {
           dateObj.setDate(dateObj.getDate() + 1);
         }
-        
+
         // Usar métodos locales para evitar problemas de zona horaria
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       };
-      
+
       const response = await fetch('/.netlify/functions/google-calendar', {
         method: 'POST',
         headers: {
@@ -260,28 +327,35 @@ class GoogleCalendarManager {
           eventData: {
             title: eventData.nombre || eventData.title,
             description: eventData.descripcion || eventData.description,
-            startDate: formatDateForGoogleAllDay(eventData.fechaInicio || eventData.startTime, false),
-            endDate: formatDateForGoogleAllDay(eventData.fechaFin || eventData.endTime, true),
+            startDate: formatDateForGoogleAllDay(
+              eventData.fechaInicio || eventData.startTime,
+              false
+            ),
+            endDate: formatDateForGoogleAllDay(
+              eventData.fechaFin || eventData.endTime,
+              true
+            ),
             location: eventData.ubicacion || eventData.location,
-            isAllDay: true // Marcar como evento de todo el día
+            isAllDay: true, // Marcar como evento de todo el día
           },
-          accessToken: this.accessToken
-        })
+          accessToken: this.accessToken,
+        }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ Google Calendar API Error:', errorData);
         throw new Error(errorData.error || 'Failed to create calendar event');
       }
-      
+
       const calendarEvent = await response.json();
-      
+
       console.log('✅ Evento creado en Google Calendar:', calendarEvent.id);
-      NotificationManager.showSuccess('Evento sincronizado con Google Calendar');
-      
+      NotificationManager.showSuccess(
+        'Evento sincronizado con Google Calendar'
+      );
+
       return calendarEvent;
-      
     } catch (error) {
       console.error('❌ Error creando evento en Calendar:', error);
       NotificationManager.showError('Error sincronizando con Google Calendar');
@@ -299,11 +373,11 @@ class GoogleCalendarManager {
 
     try {
       console.log('🔄 Actualizando evento en Google Calendar:', googleEventId);
-      
+
       // Convertir fechas para eventos de todo el día
       const formatDateForGoogleAllDay = (date, isEndDate = false) => {
         let dateObj;
-        
+
         if (date instanceof Date) {
           dateObj = new Date(date);
         } else if (typeof date === 'string') {
@@ -316,7 +390,11 @@ class GoogleCalendarManager {
             const parts = date.split('-');
             if (parts.length === 3) {
               // Crear fecha local sin problemas de UTC
-              dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+              dateObj = new Date(
+                parseInt(parts[0], 10),
+                parseInt(parts[1], 10) - 1,
+                parseInt(parts[2], 10)
+              );
             } else {
               dateObj = new Date(date);
             }
@@ -324,20 +402,20 @@ class GoogleCalendarManager {
         } else {
           return date;
         }
-        
+
         // Para eventos de todo el día, Google Calendar requiere que la fecha de fin
         // sea el día siguiente al último día del evento
         if (isEndDate) {
           dateObj.setDate(dateObj.getDate() + 1);
         }
-        
+
         // Usar métodos locales para evitar problemas de zona horaria
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       };
-      
+
       const response = await fetch('/.netlify/functions/google-calendar', {
         method: 'POST',
         headers: {
@@ -349,24 +427,30 @@ class GoogleCalendarManager {
             googleEventId: googleEventId,
             title: eventData.nombre || eventData.title,
             description: eventData.descripcion || eventData.description,
-            startDate: formatDateForGoogleAllDay(eventData.fechaInicio || eventData.startTime, false),
-            endDate: formatDateForGoogleAllDay(eventData.fechaFin || eventData.endTime, true),
+            startDate: formatDateForGoogleAllDay(
+              eventData.fechaInicio || eventData.startTime,
+              false
+            ),
+            endDate: formatDateForGoogleAllDay(
+              eventData.fechaFin || eventData.endTime,
+              true
+            ),
             location: eventData.ubicacion || eventData.location,
-            isAllDay: true
+            isAllDay: true,
           },
-          accessToken: this.accessToken
-        })
+          accessToken: this.accessToken,
+        }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ Google Calendar API Error:', errorData);
         throw new Error(errorData.error || 'Failed to update calendar event');
       }
-      
+
       console.log('✅ Evento actualizado en Google Calendar');
       NotificationManager.showSuccess('Evento actualizado en Google Calendar');
-      
+
       return true;
     } catch (error) {
       console.error('❌ Error actualizando evento en Calendar:', error);
@@ -385,7 +469,7 @@ class GoogleCalendarManager {
 
     try {
       console.log('🔄 Eliminando evento de Google Calendar:', googleEventId);
-      
+
       const response = await fetch('/.netlify/functions/google-calendar', {
         method: 'POST',
         headers: {
@@ -394,21 +478,21 @@ class GoogleCalendarManager {
         body: JSON.stringify({
           action: 'delete',
           eventData: {
-            googleEventId: googleEventId
+            googleEventId: googleEventId,
           },
-          accessToken: this.accessToken
-        })
+          accessToken: this.accessToken,
+        }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ Google Calendar API Error:', errorData);
         throw new Error(errorData.error || 'Failed to delete calendar event');
       }
-      
+
       console.log('✅ Evento eliminado de Google Calendar');
       NotificationManager.showSuccess('Evento eliminado de Google Calendar');
-      
+
       return true;
     } catch (error) {
       console.error('❌ Error eliminando evento de Calendar:', error);
@@ -430,7 +514,7 @@ class GoogleCalendarManager {
       email: 'bls.contenidos@gmail.com',
       name: 'BLS TECNICA',
       connected: true,
-      connectionTime: localStorage.getItem('google_auth_timestamp')
+      connectionTime: localStorage.getItem('google_auth_timestamp'),
     };
   }
 }

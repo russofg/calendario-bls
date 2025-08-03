@@ -56,7 +56,7 @@ exports.handler = async (event, context) => {
       case 'create':
         apiPath = '/calendar/v3/calendars/primary/events';
         method = 'POST';
-        
+
         // Determinar si es evento de todo el día
         if (eventData.isAllDay && eventData.startDate && eventData.endDate) {
           // Para eventos de todo el día, usar formato de fecha sin hora
@@ -94,7 +94,7 @@ exports.handler = async (event, context) => {
       case 'update':
         apiPath = `/calendar/v3/calendars/primary/events/${eventData.googleEventId}`;
         method = 'PUT';
-        
+
         // Determinar si es evento de todo el día
         if (eventData.isAllDay && eventData.startDate && eventData.endDate) {
           // Para eventos de todo el día, usar formato de fecha sin hora
