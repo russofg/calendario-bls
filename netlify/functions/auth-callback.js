@@ -58,9 +58,9 @@ exports.handler = async (event, context) => {
         console.log('✅ Código de autorización recibido:', code.substring(0, 20) + '...');
 
         // Guardar en localStorage para que el test principal pueda accederlo
-        localStorage.setItem('google_auth_code', code);
-        localStorage.setItem('google_auth_state', state);
-        localStorage.setItem('google_auth_timestamp', Date.now().toString());
+        localStorage.setItem('calendar_auth_code', code);
+        localStorage.setItem('calendar_auth_state', state);
+        localStorage.setItem('calendar_auth_timestamp', Date.now().toString());
 
         // Mensaje para el usuario
         document.querySelector('.success p:last-child').innerHTML = 

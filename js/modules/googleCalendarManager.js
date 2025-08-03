@@ -46,15 +46,40 @@ class GoogleCalendarManager {
    * Verificar si volvemos de un callback de autorización
    */
   async checkForAuthCallback() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const authSuccess = urlParams.get('auth');
+    // Verificar si hay código de autorización en localStorage (del callback)
+    const authCode = localStorage.getItem('calendar_auth_code');
+    const authState = localStorage.getItem('calendar_auth_state');
+    const authTimestamp = localStorage.getItem('calendar_auth_timestamp');
     
-    if (authSuccess === 'success') {
-      const code = localStorage.getItem('calendar_auth_code');
-      if (code) {
-        await this.handleAuthCallback(code);
-        // Limpiar URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+    if (authCode && authState && authTimestamp) {
+      // Verificar que no sea muy antiguo (5 minutos máximo)
+      const timestamp = parseInt(authTimestamp);
+      if (Date.now() - timestamp < 5 * 60 * 1000) {
+        console.log('🔄 Procesando código de autorización...');
+        
+        try {
+          await this.handleAuthCallback(authCode);
+          
+          // Limpiar localStorage después del procesamiento exitoso
+          localStorage.removeItem('calendar_auth_code');
+          localStorage.removeItem('calendar_auth_state');
+          localStorage.removeItem('calendar_auth_timestamp');
+          
+          // Emitir evento para actualizar UI
+          window.dispatchEvent(new CustomEvent('googleCalendarConnected'));
+          
+        } catch (error) {
+          console.error('❌ Error procesando callback:', error);
+          // Limpiar localStorage en caso de error también
+          localStorage.removeItem('calendar_auth_code');
+          localStorage.removeItem('calendar_auth_state');
+          localStorage.removeItem('calendar_auth_timestamp');
+        }
+      } else {
+        // Código expirado, limpiar
+        localStorage.removeItem('calendar_auth_code');
+        localStorage.removeItem('calendar_auth_state');
+        localStorage.removeItem('calendar_auth_timestamp');
       }
     }
   }

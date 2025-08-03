@@ -58,11 +58,17 @@ export class GoogleCalendarUIManager {
       );
     }
 
+    // Escuchar evento de conexión exitosa
+    window.addEventListener('googleCalendarConnected', () => {
+      console.log('📅 Google Calendar conectado - actualizando UI');
+      this.updateUI();
+    });
+
     // Escuchar cambios en el estado de autenticación de Google Calendar
-    // (esto se puede mejorar con un sistema de eventos más robusto)
+    // (fallback para asegurar que la UI se mantenga sincronizada)
     setInterval(() => {
       this.updateUI();
-    }, 2000);
+    }, 5000);
   }
 
   /**
