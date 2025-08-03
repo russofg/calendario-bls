@@ -7,10 +7,7 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: true,
     rollupOptions: {
-      input: {
-        main: './index.html',
-        callback: './public/auth/callback.html'
-      }
+      input: './index.html'
     }
   },
   server: {
